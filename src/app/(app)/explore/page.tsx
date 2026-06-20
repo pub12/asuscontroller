@@ -1,8 +1,15 @@
-export default function ExplorePage() {
+import { resolveServerAuth } from '@/server/auth';
+import { listDevicesAndGroups } from '@/server/devices/deviceService';
+import { DevicesScreen } from './DevicesScreen';
+
+export const dynamic = 'force-dynamic'; // always fresh device data
+
+export default async function ExplorePage() {
+  await resolveServerAuth();
+  const { devices, groups } = await listDevicesAndGroups();
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-2 p-6 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Explore</h1>
-      <p className="text-sm text-gray-500">Device discovery &amp; monitoring — coming in Phase 3.</p>
+    <main className="min-h-screen p-6">
+      <DevicesScreen devices={devices} groups={groups} />
     </main>
   );
 }
