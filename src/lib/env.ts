@@ -21,6 +21,8 @@ export interface AppEnvVars {
   ROUTER_PASS: string | undefined;
   SPIKE_TEST_MAC: string | undefined;
   NEXTDNS_API_KEY: string | undefined;
+  ROUTER_PROVIDER: string | undefined;
+  SYNC_INTERVAL_SEC: string | undefined;
 }
 
 /**
@@ -40,7 +42,42 @@ export function getAppEnv(): AppEnvVars {
     ROUTER_PASS: process.env['ROUTER_PASS'],
     SPIKE_TEST_MAC: process.env['SPIKE_TEST_MAC'],
     NEXTDNS_API_KEY: process.env['NEXTDNS_API_KEY'],
+    ROUTER_PROVIDER: process.env['ROUTER_PROVIDER'],
+    SYNC_INTERVAL_SEC: process.env['SYNC_INTERVAL_SEC'],
   };
+}
+
+/**
+ * Return the active router provider mode.
+ * Defaults to `'fake'` when ROUTER_PROVIDER is unset.
+ * Throws a clear error if set to an unrecognised value.
+ */
+export function getRouterProviderMode(): 'fake' | 'asus' {
+  const raw = process.env['ROUTER_PROVIDER'];
+  if (raw === undefined || raw === '') return 'fake';
+  if (raw === 'fake' || raw === 'asus') return raw;
+  throw new Error(
+    `[netwarden] ROUTER_PROVIDER has unrecognised value "${raw}". ` +
+      `Expected "fake" or "asus".`
+  );
+}
+
+/**
+ * Return the sync-worker polling interval in seconds.
+ * Defaults to `60` when SYNC_INTERVAL_SEC is unset.
+ * Throws a clear error if set but not a positive integer.
+ */
+export function getSyncIntervalSec(): number {
+  const raw = process.env['SYNC_INTERVAL_SEC'];
+  if (raw === undefined || raw === '') return 60;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== raw.trim()) {
+    throw new Error(
+      `[netwarden] SYNC_INTERVAL_SEC has invalid value "${raw}". ` +
+        `Expected a positive integer (e.g. 60).`
+    );
+  }
+  return parsed;
 }
 
 /**

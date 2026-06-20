@@ -37,8 +37,47 @@ for (const check of report.checks) {
 console.log('');
 if (report.passed) {
   console.log('  All checks passed.\n');
-  process.exit(0);
 } else {
   console.error('  One or more checks failed. Fix the errors above.\n');
+}
+
+// --- NetWarden sync config ---
+console.log('NetWarden — sync config\n');
+
+let syncConfigPassed = true;
+
+// ROUTER_PROVIDER
+const rawProvider = process.env['ROUTER_PROVIDER'];
+const validProviders = ['fake', 'asus'];
+let providerValue = rawProvider === undefined || rawProvider === '' ? 'fake' : rawProvider;
+if (!validProviders.includes(providerValue)) {
+  console.log(`  ${icons.error} ROUTER_PROVIDER  "${providerValue}" is not valid — expected "fake" or "asus"`);
+  syncConfigPassed = false;
+} else {
+  const isDefault = rawProvider === undefined || rawProvider === '';
+  console.log(`  ${icons.ok} ROUTER_PROVIDER  ${providerValue}${isDefault ? '  (default)' : ''}`);
+}
+
+// SYNC_INTERVAL_SEC
+const rawInterval = process.env['SYNC_INTERVAL_SEC'];
+let intervalValue = 60;
+if (rawInterval === undefined || rawInterval === '') {
+  console.log(`  ${icons.ok} SYNC_INTERVAL_SEC  60  (default)`);
+} else {
+  const parsed = Number.parseInt(rawInterval, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== rawInterval.trim()) {
+    console.log(`  ${icons.error} SYNC_INTERVAL_SEC  "${rawInterval}" is not a positive integer`);
+    syncConfigPassed = false;
+  } else {
+    intervalValue = parsed;
+    console.log(`  ${icons.ok} SYNC_INTERVAL_SEC  ${intervalValue}`);
+  }
+}
+
+console.log('');
+
+if (!report.passed || !syncConfigPassed) {
   process.exit(1);
+} else {
+  process.exit(0);
 }
