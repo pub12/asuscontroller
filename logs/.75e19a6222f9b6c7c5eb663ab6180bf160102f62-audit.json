@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/Users/pubs/Local/01.code/19.asuscontrol/logs/.75e19a6222f9b6c7c5eb663ab6180bf160102f62-audit.json",
+    "files": [
+        {
+            "date": 1781939469644,
+            "name": "/Users/pubs/Local/01.code/19.asuscontrol/logs/hazo-2026-06-20.log",
+            "hash": "c1422591ee1c3437ebb08e6c147062f8e205dcffbf1cf544c90252b5af40e9ab"
+        }
+    ],
+    "hashType": "sha256"
+}
