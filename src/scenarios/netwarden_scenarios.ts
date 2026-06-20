@@ -138,3 +138,34 @@ registerScenario('api_foundation', {
     },
   ],
 });
+
+registerScenario('secure_smoke', {
+  name: 'Secure — secrets server-only + crypto round-trip',
+  pkg: 'netwarden',
+  // Top-level doc: secrets are resolved server-side only and never bundled to the client.
+  // The hazo_secure LookupSecretsProvider reads plain env var names; field crypto uses
+  // EnvKeyProvider (prefix HAZO_FIELD_KEY) for AES-256-GCM envelope encryption.
+  cases: [{
+    name: 'GET /api/secret-test → secret round-trip and AES-GCM round-trip both pass',
+    doc: {
+      description: [
+        'Calls /api/secret-test which (1) sets a temporary env var in-process, reads it back',
+        'through a LookupSecretsProvider, and verifies the value matches (secret_roundtrip_ok),',
+        'and (2) round-trips a plaintext string through encryptField/decryptField using a',
+        'StaticKeyProvider (self-contained; no HAZO_FIELD_KEY_* vars required) (crypto_roundtrip_ok).',
+        'Secrets are resolved on the server only — this route does NOT export anything to the client bundle.',
+      ].join(' '),
+      inputs: 'GET /api/secret-test — no auth required.',
+      expectedOutputs: 'HTTP 200; body.ok === true; body.secret_roundtrip_ok === true; body.crypto_roundtrip_ok === true.',
+      caveats: 'Uses StaticKeyProvider for the crypto leg so no real HAZO_FIELD_KEY_* vars are required in dev.',
+    },
+    run: async () => {
+      const res = await fetch('/api/secret-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.secret_roundtrip_ok, true);
+      assertEqual(b.crypto_roundtrip_ok, true);
+    },
+  }],
+});

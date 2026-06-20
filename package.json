@@ -8,7 +8,8 @@
     "dev": "node scripts/next.mjs dev",
     "build": "node scripts/next.mjs build",
     "start": "node scripts/next.mjs start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "doctor": "node scripts/doctor.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.0",
