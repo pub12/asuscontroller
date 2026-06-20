@@ -50,3 +50,34 @@ decision; NextDNS remains preferred. Tracked in the ledger.
 Browser autotest scenarios reach server-only work via fetch() to dedicated /api/*-test routes that run
 against isolated in-memory DBs and supply a throwaway JWT_SECRET when the env has none — so the suite
 is green in CI without a real .env. Production auth still requires the user-placed .env (see .env.example).
+
+### 2026-06-21 — D1 · Device-sync vertical slice built fake-provider-first
+The entire device-sync vertical — sync core → recurring worker → app_devices → APIs → Explore Devices
+screen — was built and verified against a deterministic FakeRouterProvider, with zero live router/NextDNS
+traffic (ROUTER_PROVIDER=fake throughout). RouterClient (`{mac,ip,name,connected,band,vendor}`) is the
+clean seam, so the real AsusWrtProvider drops in unchanged after the supervised hardware spike. Lets the
+whole slice ship and demo now while the live-router work stays hardware-blocked.
+
+### 2026-06-21 — D2 · Sync runs in a separate worker process (not instrumentation.ts)
+netwarden.sync runs from a standalone `scripts/worker.mjs` (hazo_jobs scheduler+worker) rather than an
+in-process instrumentation.ts hook. The worker imports the PURE `runDeviceSync` core and FakeRouterProvider
+directly over Node's native TS type-stripping (type-only imports, no `server-only`, no `@/` aliases), and
+builds its own better-sqlite3 adapter exposing both `raw()` (hazo_jobs) and `rawQuery()` (sync core).
+Keeps the long-running job out of the request runtime and avoids the server-only/Turbopack worker-kill
+issues; revisit when the deploy topology is fixed.
+
+### 2026-06-21 — D3 · Devices screen gets full inline edit + acknowledge
+The Explore Devices screen ships full inline editing (friendly name / icon / notes / primary group) plus
+acknowledge-new, not a read-only list — completing the Phase 3 Devices (S) item in one pass.
+
+### 2026-06-21 — D4 · Immediate offline + capped elapsed-minute presence
+A device flips to offline immediately on the first tick it is absent. Presence time accrues the capped
+elapsed minutes between consecutive online ticks (capped so a long worker outage can't dump a huge block).
+The trade-off is a final-interval undercount (the minutes between the last-seen-online tick and going
+offline are not credited) — accepted for v1; revisit only if presence accuracy becomes billing-grade.
+
+### 2026-06-21 — D5 · Sync vs user field-ownership split
+app_devices columns are split by writer: the sync job owns router-reported fields (mac, hostname, vendor,
+current_ip, last_band, status, first_seen, last_seen) and never clobbers user-owned fields; the API owns
+friendly_name, icon, notes, primary_group_id, and is_new (cleared via acknowledge). Disjoint column sets
+mean a user edit and a concurrent sync tick can't stomp each other.

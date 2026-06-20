@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-06-21 — Device Sync vertical slice (fake-provider, overnight autonomous)
+Built the entire device-sync vertical against a deterministic FakeRouterProvider — fake router →
+recurring sync job → app_devices → APIs → Explore Devices screen. Zero live router/NextDNS traffic
+(ROUTER_PROVIDER=fake throughout); every phase verified independently (tsc + next build clean, unauth
+envelopes, worker + seed smokes) before commit.
+
+- **Env & config:** ROUTER_PROVIDER / SYNC_INTERVAL_SEC typed env + accessors (getRouterProviderMode,
+  getSyncIntervalSec); `npm run doctor` validates both; .env.example updated.
+- **RouterProvider + factory:** deterministic FakeRouterProvider (10 devices across bands; goOffline/
+  goOnline/addDevice/removeDevice sim hooks; node-importable — type-only imports, no server-only).
+  getRouterProvider() factory lazy-loads AsusWrtProvider only when ROUTER_PROVIDER=asus.
+- **Sync core:** pure `runDeviceSync(adapter, provider, nowIso, {intervalSec})` → upsert app_devices,
+  immediate offline, capped elapsed-minute presence accrual, new-device detect (D4/D5 semantics).
+  Self-contained `/api/sync-test` lifecycle proof + `sync_test` autotest scenario (8 flags green).
+- **Worker:** standalone `scripts/worker.mjs` (`npm run worker`) — hazo_jobs scheduler+worker, idempotent
+  find-or-create netwarden.sync schedule, boot-time one-shot, refuses ROUTER_PROVIDER=asus (exit 1).
+- **Device APIs:** GET /api/devices (devices+groups), PATCH /api/devices/[id] (field-ownership enforced —
+  only friendly_name/icon/notes/primary_group_id), POST /api/devices/[id]/acknowledge; in ALL_ROUTES.
+- **Explore → Devices screen:** HazoUiTable (search, status chips, group badge), New-pill acknowledge,
+  edit dialog (PATCH), EmptyState/Skeleton, Devices|Groups toggle; HazoUiToaster mounted.
+- **Sync ops + Settings:** POST /api/sync/run (superadmin, inline) + GET /api/sync/status (from hazo_jobs);
+  Settings Router & Sync section with provider/interval/last-run + Run-sync-now.
+- **Dev seed:** demo groups (Kids, IoT) idempotent in scripts/seed.mjs so group badges render.
+- **Docs:** feasibility report non-hardware sections finalized (§6 confirmed contracts); §§1-4 (live
+  router/telemetry) still pending the supervised spike.
+- **Notable:** fixed AsusWrtProvider import suffixes (.js → extensionless) — now that an App Route reaches
+  getRouterProvider(), Next bundles the lazy AsusWrt import and Turbopack can't resolve .js→.ts.
+- **Still open:** live AsusWrt productionisation + reboot-survival (hardware-blocked); telemetry provider
+  undecided (NextDNS not set up).
+
 ## 2026-06-20 — Foundations build + feasibility contracts (overnight autonomous)
 Built NetWarden as an external consuming app of the published hazo_* packages. All work verified
 (next build + tsc clean, /autotest backends green, jobs spike PASS); no live router/NextDNS calls.

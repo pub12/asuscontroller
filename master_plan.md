@@ -17,14 +17,14 @@ Last updated: 2026-06-20
 Overall:
 | Done | In progress | Not started | Total | % |
 |---|---|---|---|---|
-| 11 | 4 | 43 | 58 | 19% |
+| 14 | 5 | 39 | 58 | 24% |
 
 By phase:
 | Phase | Done | Total |
 |---|---|---|
 | 1 Feasibility Spike | 3 | 7 |
 | 2 Foundations | 8 | 8 |
-| 3 Router + Sync | 0 | 4 |
+| 3 Router + Sync | 3 | 4 |
 | 4 Blocking Core | 0 | 5 |
 | 5 Permissions | 0 | 4 |
 | 6 Groups & Images | 0 | 5 |
@@ -50,11 +50,11 @@ Recount commands:
   - Persistence & Config — hazo_connect migrations, hazo_env/config, hazo_secure — `0/3 done, 1M 2S left`
   - Auth & API — hazo_auth login/roles/first-superadmin, hazo_api foundation — `0/2 done, 2M left`
   - Shell — Login screen, Settings skeleton — `0/2 done, 2S left`
-- **Phase 3 — RouterProvider + Device Sync (planned)** — productionise router adapter + sync.
-  - RouterProvider — AsusWrtProvider read+write, secrets, HazoError — `0/1 done, 1L left`
-  - Sync Job — netwarden.sync recurring 60s, presence, new-device detect — `0/1 done, 1M left`
-  - Devices — app_devices model + editable name/icon/notes/group — `0/1 done, 1S left`
-  - Explore (Devices) — searchable list, status chips, group badge — `0/1 done, 1M left`
+- **Phase 3 — RouterProvider + Device Sync (in progress)** — full sync slice shipped vs FakeRouterProvider; real AsusWrt productionisation pending the supervised hardware spike.
+  - RouterProvider — AsusWrtProvider read+write, secrets, HazoError — `0/1 done, 1L left` (provider abstraction + FakeRouterProvider drop-in shipped; live AsusWrt productionisation hardware-blocked)
+  - Sync Job — netwarden.sync recurring 60s, presence, new-device detect — `1/1 done` (separate worker process; runDeviceSync core + sync-test)
+  - Devices — app_devices model + editable name/icon/notes/group — `1/1 done`
+  - Explore (Devices) — searchable list, status chips, group badge — `1/1 done`
 - **Phase 4 — Blocking Core (planned)** — device block/unblock + reconcile + audit.
   - Block API — device.block/unblock via hazo_api routes — `0/1 done, 1M left`
   - State & Reconcile — app_block_state + hazo_state CAS; drift reconcile in sync — `0/2 done, 2M left`
@@ -104,7 +104,7 @@ Recount commands:
 - [x] (P1)(S) hazo_auth contract: resolve subject+roles server-side; first-superadmin provisioning; scoped-role strings; lock signatures — auth-test autotest 5/5 green
 - [x] (P1)(S) Persistence + secrets smoke test: hazo_connect SQLite + 1–2 app_ tables + hazo_secure creds in Next.js server; hazo_testing harness — schema-test + secret-test autotests green
 **Gate**
-- [-] (P1)(M) Feasibility report + confirmed-contracts appendix (§6) + go/no-go recommendation — PARTIAL: skeleton + hazo contracts written; hardware/telemetry sections pending supervised spike
+- [-] (P1)(M) Feasibility report + confirmed-contracts appendix (§6) + go/no-go recommendation — PARTIAL: non-hardware sections finalized (§6 confirmed hazo contracts incl. jobs/runDeviceSync/D4-D5 + built-components appendix); hardware/telemetry sections (§§1-4) pending supervised spike
 
 ### Phase 2 — Foundations
 **App Scaffold**
@@ -122,13 +122,13 @@ Recount commands:
 
 ### Phase 3 — RouterProvider + Device Sync
 **RouterProvider**
-- [ ] (P1)(L) Productionise AsusWrtProvider — read+write, secrets via hazo_secure, HazoError handling, server-side only
+- [-] (P1)(L) Productionise AsusWrtProvider — read+write, secrets via hazo_secure, HazoError handling, server-side only — PARTIAL: RouterProvider abstraction + FakeRouterProvider (deterministic, sim hooks) shipped as the drop-in; getRouterProvider() factory lazy-loads AsusWrt only for ROUTER_PROVIDER=asus; live AsusWrt productionisation hardware-blocked (supervised spike)
 **Sync Job**
-- [ ] (P1)(M) netwarden.sync job (hazo_jobs recurring 60s) — listClients() → upsert app_devices, update presence, detect new
+- [x] (P1)(M) netwarden.sync job (hazo_jobs recurring 60s) — listClients() → upsert app_devices, update presence, detect new — pure runDeviceSync core + standalone worker process (scripts/worker.mjs, npm run worker) + sync-test autotest; D4/D5 semantics
 **Devices**
-- [ ] (P1)(S) app_devices model + editable friendly name / icon / notes / primary group
+- [x] (P1)(S) app_devices model + editable friendly name / icon / notes / primary group — deviceService + GET/PATCH/acknowledge APIs (field-ownership enforced)
 **Explore (Devices)**
-- [ ] (P1)(M) Explore — Devices screen: searchable/filterable list (useDebounce), status chips (online/offline/blocked), group badge
+- [x] (P1)(M) Explore — Devices screen: searchable/filterable list (useDebounce), status chips (online/offline/blocked), group badge — HazoUiTable, status chips, group badge, New-pill acknowledge, edit dialog
 
 ### Phase 4 — Blocking Core
 **Block API**
@@ -223,6 +223,11 @@ Recount commands:
 | "Time per domain" is estimated | Measured dwell time | Sessionisation model, labeled (est.) | — | Better signal available |
 | Capabilities outside hazo_auth roles | One auth model | app_user_grants table | Fold into hazo_auth if it gains dynamic caps | hazo_auth adds fine-grained caps |
 | v1 blocking = internet on/off only | Per-domain blocking | Whole-device/group block | Backlog DNS-layer item | Phase 2 / GO confirmed |
+| D1 · Fake-provider-first sync slice | Full slice proven vs live router | Entire vertical (sync→worker→API→UI) built+verified vs FakeRouterProvider; real AsusWrt drops in unchanged | Swap to AsusWrtProvider after spike | Router hardware + supervised session available |
+| D2 · Separate worker process (no instrumentation.ts) | Single integrated runtime | Standalone scripts/worker.mjs runs the scheduler+worker (imports pure runDeviceSync/Fake provider over native TS) | Re-evaluate co-locating once deploy model is set | Deploy/runtime topology decided |
+| D3 · Full device edit + acknowledge now | — (this is the intended UX) | friendly_name/icon/notes/primary_group editable + is_new acknowledge in the Devices screen | — | — |
+| D4 · Capped elapsed-minute presence + immediate offline | Exact connected-time accounting | Presence accrues capped elapsed minutes on consecutive online ticks; offline applied immediately (final-interval undercount accepted) | Finer-grained presence if a use case needs it | Presence accuracy complaint / billing-grade need |
+| D5 · Sync/user field-ownership split | One writer per row | Sync owns router fields; API owns friendly_name/icon/notes/primary_group/is_new — disjoint columns, edit-vs-sync safe | — | — |
 
 > Discipline: log every real trade-off here as it's made — compromise, the ideal, the interim
 > in place, the long-term fix, and the trigger that should make us revisit.
