@@ -56,6 +56,13 @@ async function applyTestSchema(adapter: import('hazo_testing').AugmentedAdapter,
 }
 
 async function runTests() {
+  // hazo_testing's createTestUser mints a session token, which requires JWT_SECRET.
+  // This autotest runs against an isolated in-memory DB and asserts permission
+  // resolution — not real token signing — so a deterministic throwaway secret keeps
+  // the fetch-based autotest self-contained (no real .env needed; CI-safe). A real
+  // JWT_SECRET from the environment, if present, is respected.
+  process.env.JWT_SECRET ??= 'netwarden-autotest-only-not-a-real-secret';
+
   const hazoSchema = getHazoAuthSchema();
 
   // Create isolated in-memory DB with both app migrations and hazo_auth schema

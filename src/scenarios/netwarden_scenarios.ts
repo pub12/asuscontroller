@@ -169,3 +169,32 @@ registerScenario('secure_smoke', {
     },
   }],
 });
+
+registerScenario('settings_gate', {
+  name: 'Settings — superadmin gate allows superadmin, denies plain user',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/settings-gate-test → superadmin_allowed_ok and plain_user_denied_ok both true',
+    doc: {
+      description: [
+        'Calls /api/settings-gate-test which spins up an isolated in-memory SQLite DB (hazo_testing),',
+        'creates a superadmin user (with netwarden:nw:superadmin permission) and a plain user',
+        '(with netwarden:nw:user permission), then asserts via userHasSuperadmin that:',
+        '(1) the superadmin is detected as superadmin (superadmin_allowed_ok),',
+        '(2) the plain user is NOT detected as superadmin (plain_user_denied_ok).',
+        'This validates the gate logic used by the Settings server component.',
+      ].join(' '),
+      inputs: 'GET /api/settings-gate-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; body.ok === true; body.superadmin_allowed_ok === true; body.plain_user_denied_ok === true.',
+      caveats: 'Uses a throwaway in-memory DB; JWT_SECRET must be set or hazo_testing provides a default.',
+    },
+    run: async () => {
+      const res = await fetch('/api/settings-gate-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.superadmin_allowed_ok, true);
+      assertEqual(b.plain_user_denied_ok, true);
+    },
+  }],
+});
