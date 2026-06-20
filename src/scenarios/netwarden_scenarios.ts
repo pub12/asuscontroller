@@ -198,3 +198,41 @@ registerScenario('settings_gate', {
     },
   }],
 });
+
+registerScenario('sync_test', {
+  name: 'Device Sync — full lifecycle (fake provider)',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/sync-test → 10 inserts, 10 updates + presence, 1 offline, 1 new device',
+    doc: {
+      description: [
+        'Calls /api/sync-test which runs three rounds of runDeviceSync against a fresh temp',
+        'SQLite DB using FakeRouterProvider (10 seeded devices, zero network calls).',
+        'Round 1 (t0): inserts all 10 devices as is_new=1 with first_seen=t0.',
+        'Round 2 (t1, +60 s): updates all 10; accrues 1 minute of presence per device',
+        '(10 total minutes across app_device_presence).',
+        'Round 3 (t2, +120 s): takes device[0] offline and adds one new device;',
+        'asserts went_offline===1, the device row status==="offline", inserted===1, is_new===1.',
+      ].join(' '),
+      inputs: 'GET /api/sync-test — no auth required (test-only route).',
+      expectedOutputs: [
+        'HTTP 200; ok, first_insert_ok, is_new_ok, first_seen_ok, update_ok,',
+        'presence_accrual_ok, offline_ok, new_insert_ok all true.',
+      ].join(' '),
+      caveats: 'Uses a throwaway temp SQLite DB; FakeRouterProvider makes no network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/sync-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.first_insert_ok, true);
+      assertEqual(b.is_new_ok, true);
+      assertEqual(b.first_seen_ok, true);
+      assertEqual(b.update_ok, true);
+      assertEqual(b.presence_accrual_ok, true);
+      assertEqual(b.offline_ok, true);
+      assertEqual(b.new_insert_ok, true);
+    },
+  }],
+});
