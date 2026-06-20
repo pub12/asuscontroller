@@ -17,13 +17,13 @@ Last updated: 2026-06-20
 Overall:
 | Done | In progress | Not started | Total | % |
 |---|---|---|---|---|
-| 0 | 0 | 58 | 58 | 0% |
+| 11 | 4 | 43 | 58 | 19% |
 
 By phase:
 | Phase | Done | Total |
 |---|---|---|
-| 1 Feasibility Spike | 0 | 7 |
-| 2 Foundations | 0 | 8 |
+| 1 Feasibility Spike | 3 | 7 |
+| 2 Foundations | 8 | 8 |
 | 3 Router + Sync | 0 | 4 |
 | 4 Blocking Core | 0 | 5 |
 | 5 Permissions | 0 | 4 |
@@ -95,30 +95,30 @@ Recount commands:
 
 ### Phase 1 — Technical Feasibility Spike
 **Router Feasibility**
-- [ ] (P1)(M) Router read path: AsusWrtProvider.listClients() vs live router — login→asus_token, appGet.cgi get_clientlist(); confirm MAC/IP/hostname/band/online + token expiry
-- [ ] (P1)(M) Router write path: blockDevice/unblockDevice via applyapp.cgi; verify access cut/restore AND reboot survival
+- [-] (P1)(M) Router read path: AsusWrtProvider.listClients() vs live router — login→asus_token, appGet.cgi get_clientlist(); confirm MAC/IP/hostname/band/online + token expiry — STAGED: AsusWrtProvider draft + spike-router.mjs written, NOT run (no hardware)
+- [-] (P1)(M) Router write path: blockDevice/unblockDevice via applyapp.cgi; verify access cut/restore AND reboot survival — STAGED: set_client_state draft + spike write path written, NOT run; reboot survival open
 **Telemetry Feasibility**
-- [ ] (P1)(M) NextDnsProvider: pull per-device domain events via API, map to MAC (resolveDeviceKey); measure freshness/lag
+- [-] (P1)(M) NextDnsProvider: pull per-device domain events via API, map to MAC (resolveDeviceKey); measure freshness/lag — BLOCKED: provider undecided (NextDNS not set up); stub returns not-configured
 **hazo Contracts**
-- [ ] (P1)(S) hazo_jobs contract: one-shot + recurring handler; kill/restart to confirm persistence + re-arm; observe retry semantics; lock signatures
-- [ ] (P1)(S) hazo_auth contract: resolve subject+roles server-side; first-superadmin provisioning; scoped-role strings; lock signatures
-- [ ] (P1)(S) Persistence + secrets smoke test: hazo_connect SQLite + 1–2 app_ tables + hazo_secure creds in Next.js server; hazo_testing harness
+- [x] (P1)(S) hazo_jobs contract: one-shot + recurring handler; kill/restart to confirm persistence + re-arm; observe retry semantics; lock signatures — spike-jobs.mjs PASS (real child-process restart); contracts in feasibility report
+- [x] (P1)(S) hazo_auth contract: resolve subject+roles server-side; first-superadmin provisioning; scoped-role strings; lock signatures — auth-test autotest 5/5 green
+- [x] (P1)(S) Persistence + secrets smoke test: hazo_connect SQLite + 1–2 app_ tables + hazo_secure creds in Next.js server; hazo_testing harness — schema-test + secret-test autotests green
 **Gate**
-- [ ] (P1)(M) Feasibility report + confirmed-contracts appendix (§6) + go/no-go recommendation
+- [-] (P1)(M) Feasibility report + confirmed-contracts appendix (§6) + go/no-go recommendation — PARTIAL: skeleton + hazo contracts written; hardware/telemetry sections pending supervised spike
 
 ### Phase 2 — Foundations
 **App Scaffold**
-- [ ] (P1)(M) Next.js App Router app scaffolded per workspace standard (test-app/, /autotest on hazo_ui/test-harness, Tailwind v4 @source wiring)
+- [x] (P1)(M) Next.js App Router app scaffolded per workspace standard (test-app/, /autotest on hazo_ui/test-harness, Tailwind v4 @source wiring)
 **Persistence & Config**
-- [ ] (P1)(M) hazo_connect migrations for app_ tables (migrations/)
-- [ ] (P1)(S) hazo_env / hazo_config config (HAZO_ENV convention) + doctor
-- [ ] (P1)(S) hazo_secure wired for router & telemetry credentials
+- [x] (P1)(M) hazo_connect migrations for app_ tables (migrations/) — all 10 app_ tables
+- [x] (P1)(S) hazo_env / hazo_config config (HAZO_ENV convention) + doctor
+- [x] (P1)(S) hazo_secure wired for router & telemetry credentials
 **Auth & API**
-- [ ] (P1)(M) hazo_auth wired — login, role resolution, first superadmin
-- [ ] (P1)(M) hazo_api route foundation — ok/fail envelopes, error codes, Zod→OpenAPI 3.1 + Swagger UI, withRequestContext, rate limiting
+- [x] (P1)(M) hazo_auth wired — login, role resolution, first superadmin (env-var SUPERADMIN_EMAIL)
+- [x] (P1)(M) hazo_api route foundation — ok/fail envelopes, error codes, Zod→OpenAPI 3.1 + Swagger UI, withRequestContext, rate limiting
 **Shell**
-- [ ] (P1)(S) Login screen (hazo_auth)
-- [ ] (P2)(S) Settings screen skeleton (superadmin) + bottom nav (Explore·Schedules·Analytics·Admin)
+- [x] (P1)(S) Login screen (hazo_auth)
+- [x] (P2)(S) Settings screen skeleton (superadmin) + bottom nav (Explore·Schedules·Analytics·Admin) — + login-redirect middleware
 
 ### Phase 3 — RouterProvider + Device Sync
 **RouterProvider**
@@ -215,6 +215,9 @@ Recount commands:
 ## Trade-off ledger
 | Compromise | Ideal | Interim | Long-term fix | Trigger to revisit |
 |---|---|---|---|---|
+| Telemetry provider undecided (NextDNS not set up; stock firmware) | Clean per-device domain telemetry | Provider stubbed "not configured"; Phase 8 blocked | Choose NextDNS (preferred) / Merlin / stock history | Before any telemetry work |
+| Live router spike staged, not run | Contracts proven against real router | Foundations + non-hardware contracts proven; scripts ready | Supervised spike session | Router + guinea-pig MAC available with a human |
+| Reboot-survival unproven | Confirmed block persists across reboot | Documented open item | Run during supervised session | Drives reconcile design in Phase 4 |
 | Unofficial ASUSWRT HTTP endpoints | Official API | RouterProvider adapter isolates churn | Re-eval per firmware | Block path breaks on update |
 | Domain-level telemetry only (no DPI) | Per-URL/app visibility | DNS/SNI domains via NextDNS | Out of scope by design | — |
 | "Time per domain" is estimated | Measured dwell time | Sessionisation model, labeled (est.) | — | Better signal available |
