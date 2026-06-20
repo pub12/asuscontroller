@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noEmit": true,
+    "incremental": true,
+    "module": "esnext",
+    "esModuleInterop": true,
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    // Force every `next`/`next/*` specifier in the program — including those
+    // inside hazo_auth's route .d.ts files — to resolve to the single next
+    // install at ./node_modules/next. hazo_auth ships its own nested
+    // next@16 (devDep ^16.0.7); without this, its handlers' NextRequest type
+    // is nominally distinct from this app's next, failing the route
+    // type-check on /api/auth/[...nextauth].
+    "paths": {
+      "next": ["./node_modules/next"],
+      "next/*": ["./node_modules/next/*"]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
