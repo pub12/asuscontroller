@@ -16,6 +16,13 @@ type SyncAdapter = {
 const MIGRATIONS_DIR = path.join(process.cwd(), 'migrations');
 
 export async function GET() {
+  // Self-contained autotest endpoint — runs unauthenticated server work against
+  // a throwaway DB so the /autotest harness can reach it in dev/CI. It must NOT
+  // be reachable in production: return 404 there (route appears not to exist).
+  if (process.env.NODE_ENV === 'production') {
+    return new Response('Not found', { status: 404 });
+  }
+
   const tmpDb = path.join(
     os.tmpdir(),
     `netwarden_sync_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
