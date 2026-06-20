@@ -61,12 +61,12 @@ would create a NON-admin user and lock the operator out of `/admin`, `/settings`
 etc.
 
 Fix:
-- Set `SUPERADMIN_EMAIL=hazoservices@gmail.com` in `.env.local`.
+- Set `SUPERADMIN_EMAIL=pubudu79@gmail.com` in `.env.local`.
 - Re-run the seed (`scripts/seed.mjs`, invoked automatically by `predev` on
   `npm run dev`). It upserts a verified (`email_verified = 1`, `status = ACTIVE`)
   superadmin user with that email and grants the `netwarden:nw:superadmin`
   permission via the role/scope chain.
-- First Google sign-in with `hazoservices@gmail.com`: `handle_google_oauth_login`
+- First Google sign-in with `pubudu79@gmail.com`: `handle_google_oauth_login`
   finds the existing user by email and links the Google `sub` (account linking
   proceeds for verified accounts; `auto_link_unverified_accounts` default `true`
   also covers the unverified case). The operator logs in AS the seeded superadmin.
