@@ -47,4 +47,65 @@ export const rateLimitedDemoRoute = defineRoute({
   },
 });
 
-export const ALL_ROUTES = [healthRoute, meRoute, rateLimitedDemoRoute];
+export const devicesRoute = defineRoute({
+  method: 'GET',
+  path: '/api/devices',
+  summary: 'List all devices and groups',
+  responses: {
+    200: {
+      description: 'Devices and groups',
+      schema: z.object({ devices: z.array(z.any()), groups: z.array(z.any()) }),
+    },
+    401: {
+      description: 'Not authenticated',
+    },
+  },
+});
+
+export const devicePatchRoute = defineRoute({
+  method: 'PATCH',
+  path: '/api/devices/{id}',
+  summary: 'Update user-owned fields on a device',
+  responses: {
+    200: {
+      description: 'Updated device',
+      schema: z.object({ device: z.any() }),
+    },
+    422: {
+      description: 'Invalid request body or unknown group',
+    },
+    401: {
+      description: 'Not authenticated',
+    },
+    404: {
+      description: 'Device not found',
+    },
+  },
+});
+
+export const deviceAcknowledgeRoute = defineRoute({
+  method: 'POST',
+  path: '/api/devices/{id}/acknowledge',
+  summary: 'Acknowledge a new device (clears is_new flag)',
+  responses: {
+    200: {
+      description: 'Acknowledged device',
+      schema: z.object({ device: z.any() }),
+    },
+    401: {
+      description: 'Not authenticated',
+    },
+    404: {
+      description: 'Device not found',
+    },
+  },
+});
+
+export const ALL_ROUTES = [
+  healthRoute,
+  meRoute,
+  rateLimitedDemoRoute,
+  devicesRoute,
+  devicePatchRoute,
+  deviceAcknowledgeRoute,
+];
