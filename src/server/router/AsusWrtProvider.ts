@@ -1,23 +1,25 @@
 /**
- * STAGED DRAFT — not wired, not executed.
- * Verify against live hardware in a supervised session.
- *
- * src/server/router/AsusWrtProvider.ts — Draft implementation of RouterProvider
- * for stock ASUS firmware (ASUSWRT) using the undocumented CGI API.
+ * src/server/router/AsusWrtProvider.ts — RouterProvider for stock ASUS firmware
+ * (ASUSWRT) over the undocumented CGI API. Verified against live ZenWiFi
+ * hardware on 2026-06.
  *
  * Stock firmware CGI endpoints:
  *   POST /login.cgi          — exchange credentials for asus_token
  *   GET  /appGet.cgi         — read hooks (get_clientlist, etc.)
  *   POST /applyapp.cgi       — write hooks (set_client_state, reboot, etc.)
  *
- * This file compiles and is correct-by-reading but is NEVER instantiated or
- * called during builds, tests, or the running app. It is wired exclusively
- * during supervised spike sessions using scripts/spike-router.mjs.
+ * IMPORTANT — User-Agent binding: stock firmware ties the issued asus_token to
+ * the User-Agent that logged in. Authenticated requests MUST reuse the exact
+ * same User-Agent or the router silently returns an HTML redirect to
+ * Main_Login.asp instead of data. Hence the single ASUS_USER_AGENT constant
+ * used for both login and every authenticated call.
  *
- * DO NOT import this file from any route, layout, autotest, or shared lib.
+ * Wired into the app via getRouterProvider() when ROUTER_PROVIDER=asus
+ * (src/server/router/index.ts) and driven by runDeviceSync.
  */
 import 'server-only';
 import { getRouterCredentials } from '../secrets';
+import { parseAsusClientList } from './parseAsusClientList';
 import type {
   RouterProvider,
   RouterClient,
@@ -31,77 +33,17 @@ import type {
 
 /**
  * Default token TTL assumed for stock ASUS firmware.
- * The real expiry is not reliably reported in the login response — verify
- * during the spike and adjust if the router returns an explicit expiry.
+ * The router does not report an explicit expiry in the login response; ~30 min
+ * is the observed idle timeout. login() is cheap, so callers re-auth on demand.
  */
 const DEFAULT_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
- * Raw entry from the router's get_clientlist NVRAM string.
- * The format is semicolon-delimited, each record uses angle-bracket fields:
- *   <mac><ip><name><connected><band><vendor>
- * but the exact separator and field count vary by firmware version.
- * This is the format verified on ASUSWRT 3.0.0.x / ZenWiFi — confirm during spike.
+ * User-Agent used for login AND every authenticated request. Must be identical
+ * across the session — see the token-binding note in the file header. This is
+ * the ASUS Android app's UA, which the firmware accepts for the CGI API.
  */
-interface RawClientEntry {
-  mac: string;
-  ip: string;
-  name: string;
-  connected: string; // "1" or "0"
-  band: string;      // "2G", "5G", "6G", or ""
-  vendor: string;
-}
-
-/**
- * Parse the raw nvram get_clientlist string from the router.
- *
- * Example raw value (one client):
- *   <AA:BB:CC:DD:EE:FF><192.168.1.100><MyPhone><1><5G><Apple, Inc.>
- *
- * Multiple clients are separated by semicolons or newlines — verify delimiter
- * during the supervised spike session.
- */
-function parseClientList(raw: string): RouterClient[] {
-  if (!raw || raw.trim() === '') return [];
-
-  // Split on semicolons (observed delimiter on ZenWiFi firmware).
-  // Fall back to newlines if no semicolons found.
-  const delimiter = raw.includes(';') ? ';' : '\n';
-  const records = raw.split(delimiter).map((r) => r.trim()).filter(Boolean);
-
-  const clients: RouterClient[] = [];
-
-  for (const record of records) {
-    // Each field is wrapped in angle brackets: <field>
-    const matches = record.match(/<([^>]*)>/g);
-    if (!matches || matches.length < 3) continue;
-
-    // Strip the angle brackets from each match
-    const fields = matches.map((m) => m.slice(1, -1));
-
-    const entry: RawClientEntry = {
-      mac: fields[0] ?? '',
-      ip: fields[1] ?? '',
-      name: fields[2] ?? '',
-      connected: fields[3] ?? '0',
-      band: fields[4] ?? '',
-      vendor: fields[5] ?? '',
-    };
-
-    if (!entry.mac) continue;
-
-    clients.push({
-      mac: entry.mac.toUpperCase(),
-      ip: entry.ip,
-      name: entry.name,
-      connected: entry.connected === '1',
-      band: entry.band,
-      vendor: entry.vendor,
-    });
-  }
-
-  return clients;
-}
+const ASUS_USER_AGENT = 'asusrouter-Android-DUTUtil-1.0.0.245';
 
 /**
  * Encode credentials as base64 for the ASUS login_authorization header.
@@ -169,8 +111,8 @@ export class AsusWrtProvider implements RouterProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'NetWarden/0.1 (spike)',
-        Referer: `http://${host}/`,
+        'User-Agent': ASUS_USER_AGENT,
+        Referer: `http://${host}/Main_Login.asp`,
       },
       body: body.toString(),
     });
@@ -228,8 +170,8 @@ export class AsusWrtProvider implements RouterProvider {
     }
     return {
       Cookie: `asus_token=${this.token}`,
-      'User-Agent': 'NetWarden/0.1 (spike)',
-      Referer: `http://${host}/`,
+      'User-Agent': ASUS_USER_AGENT,
+      Referer: `http://${host}/index.asp`,
     };
   }
 
@@ -243,14 +185,15 @@ export class AsusWrtProvider implements RouterProvider {
    * GET /appGet.cgi?hook=get_clientlist()
    *   Cookie: asus_token=<token>
    *
-   * Response JSON:
-   *   { get_clientlist: "<raw nvram string>" }
+   * Response JSON (verified shape):
+   *   { "get_clientlist": { "<MAC>": { name, nickName, ip, vendor,
+   *                                    isOnline, isWL, ... }, ..., "maclist": [...] } }
    *
-   * The raw string format is:
-   *   <MAC><IP><Name><Connected><Band><Vendor>;<MAC><IP>...
+   * If the token is rejected (e.g. wrong User-Agent / expired) the router
+   * returns HTTP 200 with an HTML body redirecting to Main_Login.asp rather
+   * than JSON — we detect that and surface a clear error.
    *
-   * See parseClientList() for the parsing logic — verify the exact format
-   * against the real router during the spike.
+   * Parsing lives in parseAsusClientList() (pure, shared with the CLI sync).
    *
    * @throws Error if not authenticated or the request fails.
    */
@@ -275,21 +218,30 @@ export class AsusWrtProvider implements RouterProvider {
       );
     }
 
+    const text = await response.text();
+
+    // Silent-auth-failure guard: the firmware answers 200 + an HTML login
+    // redirect when the session is not accepted. Treat the token as stale.
+    if (text.includes('Main_Login.asp')) {
+      this.token = null;
+      this.tokenAcquiredAt = null;
+      throw new Error(
+        'AsusWrtProvider.getClientList(): router returned a login redirect — ' +
+          'token rejected (expired or User-Agent mismatch). Call login() again.'
+      );
+    }
+
     let json: Record<string, unknown>;
     try {
-      json = (await response.json()) as Record<string, unknown>;
+      json = JSON.parse(text) as Record<string, unknown>;
     } catch {
       throw new Error(
         'AsusWrtProvider.getClientList(): could not parse response as JSON.'
       );
     }
 
-    const rawList = typeof json['get_clientlist'] === 'string'
-      ? json['get_clientlist']
-      : '';
-
-    const clients = parseClientList(rawList);
-    console.log(`[AsusWrtProvider] getClientList(): ${clients.length} client(s) found.`);
+    const clients = parseAsusClientList(json);
+    console.log(`[AsusWrtProvider] getClientList(): ${clients.length} online client(s) found.`);
     return clients;
   }
 

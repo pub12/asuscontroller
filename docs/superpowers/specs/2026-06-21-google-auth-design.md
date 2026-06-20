@@ -97,8 +97,29 @@ Without the redirect URI, Google returns `redirect_uri_mismatch`.
    (hazo_auth cookie set).
 5. `/admin` and `/settings` load (superadmin permission confirmed).
 
+## OAuth token-storage keys (required, discovered during implementation)
+
+hazo_auth's Google provider requests `access_type=offline`, so Google always
+returns a refresh token. Its sign-in callback then compares granted scopes
+against a short-name `BASE_SCOPES` list (`openid`/`email`/`profile`) — but Google
+returns canonical scope URLs (`.../userinfo.email`, `.../userinfo.profile`), so
+the "extra scopes?" check is always true and the callback unconditionally tries
+to encrypt-and-persist the refresh token. Without encryption keys this throws
+`GoogleTokenStorageUnconfigured` and sign-in fails (redirect to
+`/login?error=GoogleTokenStorageUnconfigured`).
+
+Fix: set the OAuth token-storage keys in `.env.local` (AES-256-GCM, base64 of 32
+bytes), mirroring the existing `HAZO_FIELD_KEY` pattern:
+```
+HAZO_AUTH_OAUTH_KEY_CURRENT=v1
+HAZO_AUTH_OAUTH_KEY_V1=<base64 32 bytes>
+```
+The encrypted refresh token is stored in `hazo_google_oauth_tokens`. We don't use
+it (login-only), but it is unavoidable given hazo_auth's design.
+
 ## Out of scope (YAGNI)
 
-- Extended Google scopes (Drive/Gmail/Calendar) and refresh-token storage.
+- Extended Google scopes (Drive/Gmail/Calendar) — we request only
+  `openid email profile`. (Refresh-token storage is NOT optional; see above.)
 - Production / Cloudflare-tunnel redirect URIs and `NEXTAUTH_URL`.
 - Keeping email/password as a fallback login method.

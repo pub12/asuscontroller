@@ -3,3 +3,44 @@
 @source "../../node_modules/hazo_ui/dist";
 @source "../../node_modules/hazo_auth/dist";
 @source "../../node_modules/hazo_api/dist";
+
+/*
+ * hazo_ui (and hazo_auth/hazo_api) ship shadcn-style design tokens as raw HSL
+ * triplets in hazo_ui/styles.css (`:root { --background: 0 0% 100% }`, plus a
+ * `.dark` override). Those packages assume a Tailwind v3 preset maps the tokens
+ * to color utilities — but this app is Tailwind v4, so we provide that mapping
+ * here. Without it, utilities like `bg-background` / `bg-popover` resolve to an
+ * invalid value and components such as HazoUiDialog render with a transparent
+ * panel (the page shows through the modal).
+ *
+ * `@theme inline` keeps the utilities pointing at `var(--token)` so the `.dark`
+ * overrides in styles.css continue to switch themes at runtime.
+ */
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+}
+
+/* shadcn base default: give the bare `border` utility the token border color. */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+}
