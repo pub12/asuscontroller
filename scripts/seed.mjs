@@ -128,4 +128,45 @@ if (SUPERADMIN_EMAIL) {
   console.log('[seed] Set SUPERADMIN_EMAIL (and optionally SUPERADMIN_PASSWORD) in .env to create the superadmin user.');
 }
 
+// ── 4. Demo groups ────────────────────────────────────────────────────────────
+// Idempotent: check by name before inserting.
+// app_groups columns: id (PK), name, description, type, image_file_id, color,
+//   created_by, created_at — all nullable except id and name.
+const demoGroups = [
+  {
+    name: 'Kids',
+    description: 'Devices used by kids — apply schedules and content filters here.',
+    color: '#f59e0b',
+  },
+  {
+    name: 'IoT',
+    description: 'Smart home and IoT devices — isolate from main network.',
+    color: '#0ea5e9',
+  },
+];
+
+let groupsCreated = 0;
+let groupsPresent = 0;
+
+for (const group of demoGroups) {
+  const existing = db.prepare('SELECT id FROM app_groups WHERE name = ?').get(group.name);
+  if (existing) {
+    groupsPresent++;
+  } else {
+    db.prepare(`
+      INSERT INTO app_groups (id, name, description, color, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      crypto.randomUUID(),
+      group.name,
+      group.description,
+      group.color,
+      new Date().toISOString(),
+    );
+    groupsCreated++;
+  }
+}
+
+console.log(`[seed] Demo groups: ${groupsCreated} created, ${groupsPresent} already-present.`);
+
 db.close();
