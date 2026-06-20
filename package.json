@@ -10,7 +10,8 @@
     "start": "node scripts/next.mjs start",
     "typecheck": "tsc --noEmit",
     "doctor": "node scripts/doctor.mjs",
-    "spike:jobs": "node scripts/spike-jobs.mjs"
+    "spike:jobs": "node scripts/spike-jobs.mjs",
+    "worker": "node scripts/worker.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.0",
