@@ -101,6 +101,43 @@ export const deviceAcknowledgeRoute = defineRoute({
   },
 });
 
+export const syncRunRoute = defineRoute({
+  method: 'POST',
+  path: '/api/sync/run',
+  summary: 'Trigger a device sync immediately (superadmin only)',
+  responses: {
+    200: {
+      description: 'Sync completed — returns summary',
+      schema: z.object({ summary: z.any() }),
+    },
+    401: {
+      description: 'Not authenticated',
+    },
+    403: {
+      description: 'Superadmin only',
+    },
+  },
+});
+
+export const syncStatusRoute = defineRoute({
+  method: 'GET',
+  path: '/api/sync/status',
+  summary: 'Status of the most recent netwarden.sync job',
+  responses: {
+    200: {
+      description: 'Last sync job info (nulls if never run)',
+      schema: z.object({
+        last_run_at: z.string().nullable(),
+        status: z.string().nullable(),
+        summary: z.any().nullable(),
+      }),
+    },
+    401: {
+      description: 'Not authenticated',
+    },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -108,4 +145,6 @@ export const ALL_ROUTES = [
   devicesRoute,
   devicePatchRoute,
   deviceAcknowledgeRoute,
+  syncRunRoute,
+  syncStatusRoute,
 ];

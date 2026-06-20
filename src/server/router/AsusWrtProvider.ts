@@ -17,13 +17,13 @@
  * DO NOT import this file from any route, layout, autotest, or shared lib.
  */
 import 'server-only';
-import { getRouterCredentials } from '../secrets.js';
+import { getRouterCredentials } from '../secrets';
 import type {
   RouterProvider,
   RouterClient,
   AccessResult,
   CapabilityMap,
-} from './RouterProvider.js';
+} from './RouterProvider';
 
 // ---------------------------------------------------------------------------
 // Internal helpers / constants

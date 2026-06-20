@@ -1,4 +1,6 @@
 import { resolveServerAuth } from '@/server/auth';
+import { getRouterProviderMode, getSyncIntervalSec } from '@/lib/env';
+import { SyncPanel } from './SyncPanel';
 
 export default async function SettingsPage() {
   const { isSuperadmin } = await resolveServerAuth();
@@ -14,6 +16,9 @@ export default async function SettingsPage() {
       </main>
     );
   }
+
+  const providerMode = getRouterProviderMode();
+  const intervalSec = getSyncIntervalSec();
 
   return (
     <main className="min-h-screen p-6">
@@ -43,6 +48,8 @@ export default async function SettingsPage() {
           <h2 className="mb-2 text-base font-medium text-gray-800">Polling</h2>
           <p className="text-sm text-gray-500">Polling interval — placeholder from app config.</p>
         </section>
+
+        <SyncPanel providerMode={providerMode} intervalSec={intervalSec} />
       </div>
     </main>
   );
