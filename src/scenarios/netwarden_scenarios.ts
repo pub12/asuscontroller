@@ -199,6 +199,32 @@ registerScenario('settings_gate', {
   }],
 });
 
+registerScenario('state_audit_schema', {
+  name: 'Schema — hazo_state + hazo_audit tables present',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'migrations create hazo_app_state + 3 hazo_audit tables; hazo_audit_intent round-trip passes',
+    doc: {
+      description: [
+        'Calls /api/state-audit-test which migrates a fresh temp SQLite DB via hazo_connect,',
+        'checks all 4 hazo_state/hazo_audit tables exist (hazo_app_state, hazo_audit_outbox,',
+        'hazo_audit_field, hazo_audit_intent), and round-trips an insert/findOneBy on',
+        'hazo_audit_intent to confirm the table is writable.',
+      ].join(' '),
+      inputs: 'GET /api/state-audit-test',
+      expectedOutputs: 'HTTP 200; all_tables_ok and roundtrip_ok both true.',
+      caveats: 'Uses a throwaway temp DB so the dev DB is untouched.',
+    },
+    run: async () => {
+      const res = await fetch('/api/state-audit-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.all_tables_ok, true);
+      assertEqual(b.roundtrip_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',
