@@ -26,7 +26,8 @@
     // type-check on /api/auth/[...nextauth].
     "paths": {
       "next": ["./node_modules/next"],
-      "next/*": ["./node_modules/next/*"]
+      "next/*": ["./node_modules/next/*"],
+      "@/*": ["./src/*"]
     },
     "plugins": [
       {
