@@ -17,6 +17,8 @@ import {
   Wifi,
   WifiOff,
   Pencil,
+  Ban,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   HazoUiTable,
@@ -63,6 +65,7 @@ const NONE_GROUP = '__none__';
 interface Props {
   devices: DeviceRow[];
   groups: GroupRow[];
+  isSuperadmin: boolean;
 }
 
 type Tab = 'devices' | 'groups';
@@ -101,6 +104,18 @@ function StatusChip({ status }: { status: string | undefined }) {
     >
       <Icon className="h-3 w-3" />
       {online ? 'Online' : 'Offline'}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Blocked badge
+// ---------------------------------------------------------------------------
+function BlockedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+      <Ban className="h-3 w-3" />
+      Blocked
     </span>
   );
 }
@@ -280,11 +295,12 @@ function GroupsList({ groups }: { groups: GroupRow[] }) {
 // ---------------------------------------------------------------------------
 // DevicesScreen
 // ---------------------------------------------------------------------------
-export function DevicesScreen({ devices, groups }: Props) {
+export function DevicesScreen({ devices, groups, isSuperadmin }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>('devices');
   const [editState, setEditState] = useState<EditState | null>(null);
+  const [confirmBlock, setConfirmBlock] = useState<DeviceRow | null>(null);
 
   // ------------------------------------------------------------------
   // Acknowledge a "new" device
@@ -301,6 +317,30 @@ export function DevicesScreen({ devices, groups }: Props) {
       startTransition(() => { router.refresh(); });
     } catch (e) {
       errorToast({ title: 'Acknowledge failed', description: e instanceof Error ? e.message : 'Network error' });
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Block / unblock a device (superadmin only)
+  // ------------------------------------------------------------------
+  async function handleToggleBlock(device: DeviceRow) {
+    const blocking = !device.is_blocked;
+    const url = `/api/devices/${device.id}/${blocking ? 'block' : 'unblock'}`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: blocking ? JSON.stringify({ reason: null }) : undefined,
+      });
+      const json = (await res.json()) as { ok: boolean; error?: { message: string } };
+      if (!json.ok) {
+        errorToast({ title: blocking ? 'Block failed' : 'Unblock failed', description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      successToast({ title: blocking ? 'Device blocked' : 'Device unblocked' });
+      startTransition(() => { router.refresh(); });
+    } catch (e) {
+      errorToast({ title: blocking ? 'Block failed' : 'Unblock failed', description: e instanceof Error ? e.message : 'Network error' });
     }
   }
 
@@ -332,6 +372,7 @@ export function DevicesScreen({ devices, groups }: Props) {
           <span className="flex items-center gap-2">
             <IconComp className="h-4 w-4 flex-shrink-0 text-gray-400" />
             <span className="font-medium text-gray-800">{deviceDisplayName(d)}</span>
+            {!!d.is_blocked && <BlockedBadge />}
           </span>
         );
       },
@@ -372,6 +413,31 @@ export function DevicesScreen({ devices, groups }: Props) {
             >
               New
             </button>
+          )}
+          {isSuperadmin && (
+            d.is_blocked ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isPending}
+                onClick={(e) => { e.stopPropagation(); void handleToggleBlock(d); }}
+                className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
+                aria-label="Unblock device"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isPending}
+                onClick={(e) => { e.stopPropagation(); setConfirmBlock(d); }}
+                className="h-7 w-7 p-0"
+                aria-label="Block device"
+              >
+                <Ban className="h-3.5 w-3.5" />
+              </Button>
+            )
           )}
           <Button
             variant="ghost"
@@ -446,6 +512,25 @@ export function DevicesScreen({ devices, groups }: Props) {
           onClose={() => setEditState(null)}
           onSaved={() => startTransition(() => { router.refresh(); })}
         />
+      )}
+
+      {/* Block confirm dialog */}
+      {confirmBlock && (
+        <HazoUiDialog
+          open
+          onOpenChange={(o) => { if (!o) setConfirmBlock(null); }}
+          title={`Block ${deviceDisplayName(confirmBlock)}?`}
+          actionButtonText="Block"
+          cancelButtonText="Cancel"
+          showCancelButton
+          onConfirm={() => { const d = confirmBlock; setConfirmBlock(null); void handleToggleBlock(d); }}
+          onCancel={() => setConfirmBlock(null)}
+          sizeWidth="420px"
+        >
+          <div className="p-4 text-sm text-gray-600">
+            This cuts internet access for this device at the router. You can unblock it again at any time.
+          </div>
+        </HazoUiDialog>
       )}
     </div>
   );

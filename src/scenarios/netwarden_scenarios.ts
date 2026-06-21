@@ -430,6 +430,40 @@ registerScenario('audit_drain', {
   }],
 });
 
+/**
+ * devices_list — mergeBlockState pure helper + block annotation in listDevicesAndGroups.
+ * Proves: d1 (is_blocked=1) annotated correctly, d2 (is_blocked=0) annotated correctly,
+ * and empty block rows yields all is_blocked===0 (pure helper safety).
+ */
+registerScenario('devices_list', {
+  name: 'Devices List — mergeBlockState block annotation',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/devices-list-test → merged_ok and pure_ok both true',
+    doc: {
+      description: [
+        'Calls /api/devices-list-test which spins up a throwaway temp SQLite DB,',
+        'inserts two devices (d1, d2) and app_block_state rows (d1 blocked, d2 not blocked),',
+        'then calls mergeBlockState and asserts:',
+        '(merged_ok) d1.is_blocked===1 and d2.is_blocked===0 after merge;',
+        '(pure_ok) passing [] block rows to mergeBlockState yields all is_blocked===0 (no crash on empty).',
+      ].join(' '),
+      inputs: 'GET /api/devices-list-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; merged_ok true; pure_ok true.',
+      caveats: 'Uses a throwaway temp DB; no network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/devices-list-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.merged_ok, true);
+      assertEqual(b.pure_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',

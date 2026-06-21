@@ -18,6 +18,7 @@ export interface DeviceRow extends Record<string, unknown> {
   first_seen?: string;
   last_seen?: string;
   primary_group_id?: string | null;
+  is_blocked?: number;
 }
 
 export interface GroupRow extends Record<string, unknown> {
@@ -31,10 +32,25 @@ export interface GroupRow extends Record<string, unknown> {
   created_at?: string;
 }
 
+/** Annotate devices with is_blocked from app_block_state rows (pure; testable). */
+export function mergeBlockState<T extends { id?: string }>(
+  devices: T[],
+  blockRows: { device_id?: string; is_blocked?: number }[],
+): (T & { is_blocked: number })[] {
+  const blocked = new Set(
+    blockRows.filter((r) => Number(r.is_blocked) === 1).map((r) => r.device_id),
+  );
+  return devices.map((d) => ({ ...d, is_blocked: blocked.has(d.id) ? 1 : 0 }));
+}
+
 export async function listDevicesAndGroups(): Promise<{ devices: DeviceRow[]; groups: GroupRow[] }> {
   const db = getDb();
-  const devices = await createCrudService<DeviceRow>(db, 'app_devices').list();
+  const rawDevices = await createCrudService<DeviceRow>(db, 'app_devices').list();
   const groups = await createCrudService<GroupRow>(db, 'app_groups').list();
+  const blockRows = await createCrudService<{ device_id?: string; is_blocked?: number }>(
+    db, 'app_block_state', { primaryKeys: ['device_id'], autoId: false },
+  ).list();
+  const devices = mergeBlockState(rawDevices, blockRows);
   return { devices, groups };
 }
 
