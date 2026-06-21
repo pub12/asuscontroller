@@ -44,6 +44,13 @@ export class ScheduleServiceError extends Error {
   }
 }
 
+/** Map a ScheduleServiceError code → hazo_api fail code (JOBS_ERROR has no direct equivalent). */
+export function mapScheduleErrorCode(
+  code: ScheduleServiceErrorCode,
+): 'NOT_FOUND' | 'VALIDATION_FAILED' | 'INTERNAL_ERROR' {
+  return code === 'JOBS_ERROR' ? 'INTERNAL_ERROR' : code;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -112,6 +119,22 @@ async function assertNoActiveOneShot(
   }
 }
 
+async function submitOneShotScheduleJob(
+  jobs: JobsClient,
+  opts: { targetType: 'device' | 'group'; targetId: string; action: 'block' | 'unblock'; scheduleId: string; runAt: string },
+): Promise<string> {
+  const { targetType, targetId, action, scheduleId, runAt } = opts;
+  const payload: ScheduleJobPayload = { targetType, targetId, action, scheduleId };
+  const { jobId } = await jobs.submit({
+    type: 'netwarden.' + action,
+    description: `scheduled ${action} ${targetId}`,
+    payload,
+    runAt,
+    maxAttempts: 1,
+  });
+  return jobId;
+}
+
 // ---------------------------------------------------------------------------
 // createTimer
 //
@@ -160,18 +183,10 @@ export async function createTimer(opts: {
   }
 
   const scheduleId = schedId();
-  const payload: ScheduleJobPayload = { targetType, targetId, action: 'unblock', scheduleId };
 
   let jobId: string | undefined;
   try {
-    const submitted = await jobs.submit({
-      type: 'netwarden.unblock',
-      description: 'scheduled unblock ' + targetId,
-      payload,
-      runAt,
-      maxAttempts: 1,
-    });
-    jobId = submitted.jobId;
+    jobId = await submitOneShotScheduleJob(jobs, { targetType, targetId, action: 'unblock', scheduleId, runAt });
 
     // For device targets: stamp the scheduled unblock info into app_block_state.
     if (targetType === 'device') {
@@ -264,18 +279,10 @@ export async function createUnblockTimer(opts: {
   }
 
   const scheduleId = schedId();
-  const payload: ScheduleJobPayload = { targetType, targetId, action: 'block', scheduleId };
 
   let jobId: string | undefined;
   try {
-    const submitted = await jobs.submit({
-      type: 'netwarden.block',
-      description: 'scheduled re-block ' + targetId,
-      payload,
-      runAt,
-      maxAttempts: 1,
-    });
-    jobId = submitted.jobId;
+    jobId = await submitOneShotScheduleJob(jobs, { targetType, targetId, action: 'block', scheduleId, runAt });
 
     const now = new Date().toISOString();
     const row: ScheduleRow = {
@@ -328,15 +335,8 @@ export async function createFutureBlock(opts: {
   const { adapter, jobs, targetType, targetId, action, atISO, label, actor } = opts;
 
   const scheduleId = schedId();
-  const payload: ScheduleJobPayload = { targetType, targetId, action, scheduleId };
 
-  const { jobId } = await jobs.submit({
-    type: 'netwarden.' + action,
-    description: `scheduled ${action} ${targetId}`,
-    payload,
-    runAt: atISO,
-    maxAttempts: 1,
-  });
+  const jobId = await submitOneShotScheduleJob(jobs, { targetType, targetId, action, scheduleId, runAt: atISO });
 
   const now = new Date().toISOString();
   const row: ScheduleRow = {

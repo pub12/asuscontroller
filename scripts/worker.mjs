@@ -46,6 +46,9 @@ for (const file of ['.env.local', '.env']) {
 // different provider than the one that applied the block.
 // ---------------------------------------------------------------------------
 const providerMode = process.env.ROUTER_PROVIDER || 'fake';
+if (!process.env.ROUTER_PROVIDER) {
+  console.warn('[worker] ROUTER_PROVIDER is unset — defaulting to "fake" (in-process, no real router). Set ROUTER_PROVIDER=asus in .env.local to drive the real router.');
+}
 
 if (providerMode !== 'fake' && providerMode !== 'asus') {
   console.error(
@@ -268,6 +271,10 @@ if (providerMode === 'asus') {
 } else {
   // Share block state with the web process via a file so a scheduled unblock
   // fired here isn't resurrected by the web app's pull-reconcile (and vice-versa).
+  // No file-locking is needed on this shared state file: the single-threaded web
+  // process and this single worker serialize their writes (last-writer-wins is
+  // acceptable for the fake provider, which is dev/test-only). asus mode does not
+  // touch this file at all.
   provider = new FakeRouterProvider(undefined, { persistPath: fakeRouterStatePath() });
 }
 const telemetryProvider = new FakeTelemetryProvider();
@@ -417,8 +424,8 @@ async function shutdown(signal) {
   console.log(`[worker] Received ${signal} — shutting down gracefully...`);
   await worker.stop();
   scheduler.stop();
-  try { await auditWorker.stop(); } catch {}
-  try { if (typeof auditAdapter.close === 'function') auditAdapter.close(); } catch {}
+  try { await auditWorker.stop(); } catch (err) { console.error(`[worker] auditWorker.stop() failed during shutdown: ${err?.message ?? err}`); }
+  try { if (typeof auditAdapter.close === 'function') auditAdapter.close(); } catch (err) { console.error(`[worker] auditAdapter.close() failed during shutdown: ${err?.message ?? err}`); }
   adapter.close();
   console.log('[worker] Clean shutdown complete.');
   process.exit(0);

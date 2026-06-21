@@ -9,13 +9,8 @@ import {
   setEnabled,
   cancelSchedule,
   ScheduleServiceError,
+  mapScheduleErrorCode,
 } from '@/server/schedules/scheduleService';
-
-// Map ScheduleServiceError codes → hazo_api fail codes (JOBS_ERROR has no direct equivalent)
-function mapCode(code: string): 'NOT_FOUND' | 'VALIDATION_FAILED' | 'INTERNAL_ERROR' {
-  if (code === 'JOBS_ERROR') return 'INTERNAL_ERROR';
-  return code as 'NOT_FOUND' | 'VALIDATION_FAILED';
-}
 
 // ---------------------------------------------------------------------------
 // Helper: load schedule target from DB for auth scoping
@@ -110,7 +105,7 @@ export const PATCH = withRequestContext(
       return ok({ schedule });
     } catch (err) {
       if (err instanceof ScheduleServiceError) {
-        return fail(mapCode(err.code), err.message);
+        return fail(mapScheduleErrorCode(err.code), err.message);
       }
       throw err;
     }
@@ -152,7 +147,7 @@ export const DELETE = withRequestContext(
       return ok({ schedule });
     } catch (err) {
       if (err instanceof ScheduleServiceError) {
-        return fail(mapCode(err.code), err.message);
+        return fail(mapScheduleErrorCode(err.code), err.message);
       }
       throw err;
     }
