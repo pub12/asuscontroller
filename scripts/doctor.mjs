@@ -74,6 +74,29 @@ if (rawInterval === undefined || rawInterval === '') {
   }
 }
 
+// RAW_EVENT_RETENTION_DAYS
+const rawRetention = process.env['RAW_EVENT_RETENTION_DAYS'];
+if (rawRetention === undefined || rawRetention === '') {
+  console.log(`  ${icons.ok} RAW_EVENT_RETENTION_DAYS  30  (default)`);
+} else {
+  const parsedRetention = Number.parseInt(rawRetention, 10);
+  if (!Number.isFinite(parsedRetention) || parsedRetention <= 0 || String(parsedRetention) !== rawRetention.trim()) {
+    console.log(`  ${icons.error} RAW_EVENT_RETENTION_DAYS  "${rawRetention}" is not a positive integer`);
+    syncConfigPassed = false;
+  } else {
+    console.log(`  ${icons.ok} RAW_EVENT_RETENTION_DAYS  ${parsedRetention}`);
+  }
+}
+
+// TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
+const hasTelegramToken = Boolean(process.env['TELEGRAM_BOT_TOKEN']);
+const hasTelegramChat = Boolean(process.env['TELEGRAM_CHAT_ID']);
+if (hasTelegramToken && hasTelegramChat) {
+  console.log(`  ${icons.ok} TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID  notify enabled`);
+} else {
+  console.log(`  ${icons.warn} TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID  notify disabled — alerts will no-op`);
+}
+
 console.log('');
 
 if (!report.passed || !syncConfigPassed) {
