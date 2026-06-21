@@ -24,6 +24,7 @@ import {
   Activity,
   Globe,
   SquarePen,
+  CalendarClock,
 } from 'lucide-react';
 import {
   Button,
@@ -34,6 +35,7 @@ import {
 } from 'hazo_ui';
 import type { DeviceRow } from '@/server/devices/deviceService';
 import type { DeviceActivity, ActivityItem } from '@/server/devices/deviceActivity';
+import { BlockTimerModal } from '@/components/BlockTimerModal';
 
 // ---------------------------------------------------------------------------
 // Icon map
@@ -202,6 +204,7 @@ export function DeviceDetailScreen({
   const [, setPending] = useTransition();
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [showTimerModal, setShowTimerModal] = useState(false);
 
   const DeviceIcon = ICONS[device.icon ?? ''] ?? HardDrive;
   const displayName = deviceDisplayName(device);
@@ -279,7 +282,7 @@ export function DeviceDetailScreen({
       <section>
         <h2 className="mb-3 text-base font-semibold text-gray-800">Internet Access</h2>
         {isSuperadmin ? (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {isBlocked ? (
               <Button
                 onClick={() => { void handleToggleBlock(); }}
@@ -299,6 +302,14 @@ export function DeviceDetailScreen({
                 Block internet
               </Button>
             )}
+            <Button
+              variant="outline"
+              onClick={() => setShowTimerModal(true)}
+              className="gap-1.5 text-teal-700 border-teal-200 hover:bg-teal-50"
+            >
+              <CalendarClock className="h-4 w-4" />
+              Set timer / Schedule
+            </Button>
           </div>
         ) : (
           <p className="text-sm text-gray-400">
@@ -385,6 +396,18 @@ export function DeviceDetailScreen({
             This cuts internet access for this device at the router. You can unblock it again at any time.
           </div>
         </HazoUiDialog>
+      )}
+
+      {/* ---- Timer / Schedule modal ---- */}
+      {showTimerModal && (
+        <BlockTimerModal
+          open={showTimerModal}
+          onOpenChange={setShowTimerModal}
+          targetType="device"
+          targetId={device.id ?? ''}
+          targetLabel={displayName}
+          isBlocked={isBlocked}
+        />
       )}
     </div>
   );

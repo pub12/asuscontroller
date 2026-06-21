@@ -10,6 +10,7 @@ import {
   X,
   Search,
   Pencil,
+  CalendarClock,
 } from 'lucide-react';
 import {
   Button,
@@ -20,6 +21,7 @@ import {
 } from 'hazo_ui';
 import type { GroupRow, DeviceRow } from '@/server/devices/deviceService';
 import type { GroupSummary } from '@/server/groups/groupService';
+import { BlockTimerModal } from '@/components/BlockTimerModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,6 +144,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
   const [showEditGroup, setShowEditGroup] = useState(false);
+  const [showTimerModal, setShowTimerModal] = useState(false);
 
   // Edit state
   const [editName, setEditName] = useState(group.name ?? '');
@@ -474,10 +477,22 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
         <p className="text-sm text-gray-500">Coming soon — usage stats and bandwidth analytics for this group.</p>
       </section>
 
-      {/* Schedules placeholder */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-sm font-medium text-gray-800 mb-2">Schedules</h2>
-        <p className="text-sm text-gray-500">Coming soon — time-based access schedules for this group.</p>
+      {/* Schedules */}
+      <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+        <h2 className="text-sm font-medium text-gray-800">Schedules</h2>
+        {isSuperadmin ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTimerModal(true)}
+            className="gap-1.5 text-teal-700 border-teal-200 hover:bg-teal-50"
+          >
+            <CalendarClock className="h-4 w-4" />
+            Set timer / Schedule
+          </Button>
+        ) : (
+          <p className="text-sm text-gray-500">Superadmin required to manage schedules.</p>
+        )}
       </section>
 
       {/* Request access dialog */}
@@ -591,6 +606,18 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
           </div>
         </div>
       </HazoUiDialog>
+
+      {/* Timer / Schedule modal */}
+      {showTimerModal && (
+        <BlockTimerModal
+          open={showTimerModal}
+          onOpenChange={setShowTimerModal}
+          targetType="group"
+          targetId={groupId}
+          targetLabel={group.name ?? groupId}
+          isBlocked={isBlocked}
+        />
+      )}
 
       {/* Add members dialog */}
       <HazoUiDialog
