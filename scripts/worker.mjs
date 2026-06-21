@@ -57,6 +57,17 @@ if (!Number.isInteger(intervalSec) || intervalSec <= 0) {
 }
 
 // ---------------------------------------------------------------------------
+// Guard: TELEMETRY_INGEST_SEC
+// ---------------------------------------------------------------------------
+const telemetryIngestSec = parseInt(process.env.TELEMETRY_INGEST_SEC || '300', 10);
+if (!Number.isInteger(telemetryIngestSec) || telemetryIngestSec <= 0) {
+  console.error(
+    `[worker] TELEMETRY_INGEST_SEC must be a positive integer (got "${process.env.TELEMETRY_INGEST_SEC}"). Set e.g. TELEMETRY_INGEST_SEC=300.`,
+  );
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
 // Build thin adapter over better-sqlite3
 // Exposes:
 //   raw(sql, values?)   — for hazo_jobs (stmt.reader branch; $1→? translation)
@@ -174,6 +185,24 @@ if (!existingRetention) {
   console.log(`[worker] Reusing existing schedule id=${existingRetention.id} (type=netwarden.retention, cron="${existingRetention.cron ?? retentionCron}")`);
 }
 
+const ingestMinutes = Math.max(1, Math.round(telemetryIngestSec / 60));
+const ingestCron = ingestMinutes === 1 ? '* * * * *' : `*/${ingestMinutes} * * * *`;
+
+// Idempotent ingest schedule (find-or-create) — telemetry domain-event ingest.
+const existingIngest = schedules.find((s) => s.type === 'netwarden.ingest');
+if (!existingIngest) {
+  const createdIngest = await jobs.schedules.create({
+    name: 'netwarden-ingest',
+    cron: ingestCron,
+    type: 'netwarden.ingest',
+    payload: {},
+    maxAttempts: 1,
+  });
+  console.log(`[worker] Created recurring schedule: id=${createdIngest.id}, cron="${ingestCron}", next_run_at=${createdIngest.next_run_at}`);
+} else {
+  console.log(`[worker] Reusing existing schedule id=${existingIngest.id} (type=netwarden.ingest, cron="${existingIngest.cron ?? ingestCron}")`);
+}
+
 // ── Audit-outbox drain ──────────────────────────────────────────────────────
 // startAuditWorker needs a full hazo_connect adapter (claimRows primitive); the
 // thin adapter above only has raw/rawQuery. Open a 2nd better-sqlite3 connection
@@ -195,6 +224,8 @@ const auditWorker = startAuditWorker({ app_adapter: auditAdapter });
 const { FakeRouterProvider } = await import('../src/server/router/FakeRouterProvider.ts');
 const { runDeviceSync } = await import('../src/server/sync/runDeviceSync.ts');
 const { pruneEvents } = await import('../src/server/retention/pruneEvents.ts');
+const { runTelemetryIngest } = await import('../src/server/telemetry/runTelemetryIngest.ts');
+const { FakeTelemetryProvider } = await import('../src/server/telemetry/FakeTelemetryProvider.ts');
 
 // ---------------------------------------------------------------------------
 // Ops alerting (best-effort — Telegram-direct; no-op when TELEGRAM_* unset)
@@ -204,6 +235,7 @@ const notify = createNotifyProvider();
 console.log(`[worker] Ops alerting: ${isNotifyConfigured() ? 'enabled' : 'disabled (TELEGRAM_* unset)'}`);
 
 const provider = new FakeRouterProvider();
+const telemetryProvider = new FakeTelemetryProvider();
 
 // ---------------------------------------------------------------------------
 // Startup banner
@@ -212,6 +244,7 @@ console.log('[worker] ─── NetWarden Sync Worker ────────�
 console.log(`[worker] DB path:       ${DB_PATH}`);
 console.log(`[worker] Provider mode: ${providerMode}`);
 console.log(`[worker] Interval:      ${intervalSec}s → cron "${cron}" (every ${minutes} minute(s))`);
+console.log(`[worker] Ingest:        ${telemetryIngestSec}s → cron "${ingestCron}" (every ${ingestMinutes} minute(s))`);
 console.log('[worker] ─────────────────────────────────────────────────────────');
 
 // ---------------------------------------------------------------------------
@@ -231,7 +264,7 @@ const worker = createWorker({
   dialect: 'sqlite',
   tablePrefix: 'hazo_jobs',
   workerId: 'netwarden-sync-worker',
-  types: ['netwarden.sync', 'netwarden.retention', 'netwarden.block', 'netwarden.unblock'],
+  types: ['netwarden.sync', 'netwarden.retention', 'netwarden.block', 'netwarden.unblock', 'netwarden.ingest'],
   pollMs: 1_000,
   concurrency: 1,
 });
@@ -272,6 +305,21 @@ const handler = async (job) => {
     }
     return result;
   }
+  if (job.type === 'netwarden.ingest') {
+    let summary;
+    try {
+      summary = await runTelemetryIngest(adapter, telemetryProvider, new Date().toISOString());
+    } catch (err) {
+      await notify.alert({ title: '🔴 NetWarden telemetry ingest failed', body: String(err?.message ?? err), dedupeKey: 'ingest-failure' });
+      throw err;
+    }
+    if (summary.configured === false) {
+      const { notifyTelemetryGap } = await import('../src/server/notify/events.ts');
+      await notifyTelemetryGap(notify, { reason: 'telemetry provider not configured' });
+    }
+    console.log('[worker] netwarden.ingest processed job', job.id, JSON.stringify(summary));
+    return summary;
+  }
   let summary;
   try {
     summary = await runDeviceSync(adapter, provider, new Date().toISOString(), { intervalSec });
@@ -301,7 +349,7 @@ const handler = async (job) => {
 // Keep a reference to the run promise so we can await it at the end
 // (worker.run resolves only when worker.stop() is called).
 const runPromise = worker.run(handler);
-console.log('[worker] Worker started (pollMs=1000, concurrency=1, types=netwarden.sync|retention|block|unblock).');
+console.log('[worker] Worker started (pollMs=1000, concurrency=1, types=netwarden.sync|retention|block|unblock|ingest).');
 
 // ---------------------------------------------------------------------------
 // Boot-time immediate sync — submit a one-shot job with runAt=now so the
@@ -317,6 +365,15 @@ const bootJob = await jobs.submit({
   runAt: new Date().toISOString(),
 });
 console.log(`[worker] Boot-time one-shot submitted: jobId=${bootJob.jobId}`);
+
+const bootIngestJob = await jobs.submit({
+  type: 'netwarden.ingest',
+  description: 'worker boot ingest',
+  payload: { boot: true },
+  maxAttempts: 1,
+  runAt: new Date().toISOString(),
+});
+console.log(`[worker] Boot-time ingest one-shot submitted: jobId=${bootIngestJob.jobId}`);
 
 // ---------------------------------------------------------------------------
 // Graceful shutdown
