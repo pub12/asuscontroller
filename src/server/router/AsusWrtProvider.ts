@@ -265,61 +265,172 @@ export class AsusWrtProvider implements RouterProvider {
   }
 
   // -------------------------------------------------------------------------
-  // Write — internet access
+  // Write — internet access (Parental Control / Network Services Filter)
   // -------------------------------------------------------------------------
+  //
+  // `set_client_state(...)` is NOT a real block hook — the router returns 200
+  // and does nothing, which is why a "Blocked" device kept its internet. Real
+  // blocking drives the parental-control MULTIFILTER subsystem: four
+  // index-aligned, `>`-joined nvram lists, mutated via a read-modify-write and
+  // committed with `action_mode=apply` + `rc_service=restart_firewall` (the
+  // commit/apply step that was missing). ENABLE=2 = block 24/7; daytime `<` is
+  // a bare schedule. Existing entries (e.g. GUI time-schedules) are preserved.
+
+  // The four MULTIFILTER lists, in a fixed order. Read together they must all
+  // have the same length (one entry per device) or the table is corrupt.
+  private static readonly MF_VARS = [
+    'MULTIFILTER_MAC',
+    'MULTIFILTER_ENABLE',
+    'MULTIFILTER_DEVICENAME',
+    'MULTIFILTER_MACFILTER_DAYTIME_V2',
+  ] as const;
+
+  /** Decode the router's HTML numeric entities (`&#62`→`>`, `&#60`→`<`). */
+  private decodeMfEntities(s: string): string {
+    return s.replace(/&#62/g, '>').replace(/&#60/g, '<');
+  }
+
+  /** Split a `>`-joined MULTIFILTER list; an empty string is the empty list. */
+  private splitMfList(raw: string): string[] {
+    return raw === '' ? [] : raw.split('>');
+  }
 
   /**
-   * Enable or disable internet access for a client by MAC address.
+   * Read one nvram value via appGet.cgi (decoded).
+   * @throws Error on transport failure or a rejected token.
+   */
+  private async nvramGet(name: string): Promise<string> {
+    const { host } = await getRouterCredentials();
+    const res = await fetch(`http://${host}/appGet.cgi?hook=nvram_get(${name})`, {
+      method: 'GET',
+      headers: this.authHeaders(host),
+    });
+    if (!res.ok) {
+      throw new Error(`AsusWrtProvider.nvramGet(${name}): HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    if (text.includes('Main_Login.asp')) {
+      this.token = null;
+      this.tokenAcquiredAt = null;
+      throw new Error(
+        `AsusWrtProvider.nvramGet(${name}): login redirect — token rejected.`
+      );
+    }
+    const json = JSON.parse(text) as Record<string, string>;
+    return this.decodeMfEntities(json[name] ?? '');
+  }
+
+  /** Read all four parental-control lists, split and ready to mutate. */
+  private async readMultifilter(): Promise<{
+    macs: string[];
+    enables: string[];
+    names: string[];
+    daytimes: string[];
+  }> {
+    // One request per var: the chained `nvram_get(a);nvram_get(b)` form only
+    // returns the first value on this firmware.
+    const [mac, enable, name, daytime] = await Promise.all(
+      AsusWrtProvider.MF_VARS.map((v) => this.nvramGet(v)),
+    );
+    return {
+      macs: this.splitMfList(mac),
+      enables: this.splitMfList(enable),
+      names: this.splitMfList(name),
+      daytimes: this.splitMfList(daytime),
+    };
+  }
+
+  /**
+   * Block or unblock a client's internet via the parental-control filter.
    *
-   * POST /applyapp.cgi
-   *   Content-Type: application/x-www-form-urlencoded
-   *   Cookie: asus_token=<token>
-   *   Body: hook=set_client_state(<mac>,<enabled>,<cut_mac>,<group>)
+   * BLOCK (enabled=false): append the MAC with ENABLE=2 (24/7) if absent, or
+   * flip its existing entry to ENABLE=2. UNBLOCK (enabled=true): remove our
+   * entry entirely. Either way the full, preserved lists are POSTed back with
+   * action_mode=apply + rc_service=restart_firewall.
    *
-   * Stock firmware set_client_state argument format (verify during spike):
-   *   - mac:     uppercase colon-separated MAC
-   *   - enabled: "1" = internet ON, "0" = internet OFF
-   *   - cut_mac: same as mac (some firmware variants require this)
-   *   - group:   "" (empty = no group association)
-   *
-   * The response body on success is typically:
-   *   { [hook_name]: "" } or a status field.
-   *
-   * Block persistence: UNVERIFIED — see docs/phase1-feasibility-report.md §3.
-   *
-   * @param mac     Uppercase colon-separated MAC, e.g. "AA:BB:CC:DD:EE:FF".
-   * @param enabled true = grant internet access, false = block.
-   * @throws Error if not authenticated or request fails at transport level.
+   * @param mac     Colon-separated MAC (case-insensitive).
+   * @param enabled true = grant internet (remove rule); false = block 24/7.
    */
   async setInternetAccess(mac: string, enabled: boolean): Promise<AccessResult> {
     const { host } = await getRouterCredentials();
-
     if (!host) {
       throw new Error(
         'AsusWrtProvider.setInternetAccess(): ROUTER_HOST not set.'
       );
     }
 
-    // A fresh provider has no token; log in lazily so the block/unblock routes
-    // don't have to. Surface a login failure as an unsuccessful AccessResult
-    // (router_synced=0) rather than masking it as a generic network error.
+    // Fresh provider has no token; log in lazily so callers don't have to.
     try {
       await this.ensureAuthenticated();
     } catch (err) {
+      return { success: false, message: `Authentication failed: ${String(err)}` };
+    }
+
+    const targetMac = mac.toUpperCase();
+
+    let lists;
+    try {
+      lists = await this.readMultifilter();
+    } catch (err) {
       return {
         success: false,
-        message: `Authentication failed before set_client_state: ${String(err)}`,
+        message: `Failed to read parental-control rules: ${String(err)}`,
+      };
+    }
+    const { macs, enables, names, daytimes } = lists;
+
+    // Refuse to write misaligned lists — that corrupts the whole table.
+    const len = macs.length;
+    if (
+      enables.length !== len ||
+      names.length !== len ||
+      daytimes.length !== len
+    ) {
+      return {
+        success: false,
+        message:
+          `MULTIFILTER lists misaligned (mac=${len}, enable=${enables.length}, ` +
+          `name=${names.length}, daytime=${daytimes.length}); refusing to write.`,
       };
     }
 
-    const enabledFlag = enabled ? '1' : '0';
-    // Hook format: set_client_state(<mac>,<enabled>,<cut_mac>,<group>)
-    // Verify exact arity and argument order against live firmware during the spike.
-    const hook = `set_client_state(${mac},${enabledFlag},${mac},)`;
+    const idx = macs.findIndex((m) => m.toUpperCase() === targetMac);
+
+    if (!enabled) {
+      // BLOCK 24/7
+      if (idx >= 0) {
+        enables[idx] = '2';
+      } else {
+        macs.push(targetMac);
+        enables.push('2');
+        names.push('NetWarden block');
+        daytimes.push('<');
+      }
+    } else {
+      // UNBLOCK — remove our entry, preserving all others
+      if (idx < 0) {
+        return {
+          success: true,
+          message: `No parental-control rule for ${targetMac}; already unblocked.`,
+        };
+      }
+      macs.splice(idx, 1);
+      enables.splice(idx, 1);
+      names.splice(idx, 1);
+      daytimes.splice(idx, 1);
+    }
+
+    const body = new URLSearchParams({
+      action_mode: 'apply',
+      rc_service: 'restart_firewall',
+      MULTIFILTER_ALL: '1',
+      MULTIFILTER_MAC: macs.join('>'),
+      MULTIFILTER_ENABLE: enables.join('>'),
+      MULTIFILTER_DEVICENAME: names.join('>'),
+      MULTIFILTER_MACFILTER_DAYTIME_V2: daytimes.join('>'),
+    });
 
     const url = `http://${host}/applyapp.cgi`;
-    const body = new URLSearchParams({ hook });
-
     let response: Response;
     try {
       response = await fetch(url, {
@@ -333,23 +444,24 @@ export class AsusWrtProvider implements RouterProvider {
     } catch (err) {
       return {
         success: false,
-        message: `Network error calling setInternetAccess: ${String(err)}`,
+        message: `Network error applying parental-control rule: ${String(err)}`,
       };
     }
-
     if (!response.ok) {
       return {
         success: false,
-        message: `HTTP ${response.status} from ${url} for set_client_state`,
+        message: `HTTP ${response.status} from ${url} applying parental-control rule.`,
       };
     }
 
-    const action = enabled ? 'ENABLED' : 'DISABLED';
-    console.log(`[AsusWrtProvider] setInternetAccess(${mac}, ${enabled}): ${action}`);
-
+    const action = enabled ? 'UNBLOCKED' : 'BLOCKED';
+    console.log(
+      `[AsusWrtProvider] setInternetAccess(${targetMac}, ${enabled}): ${action} ` +
+        `via MULTIFILTER (restart_firewall).`,
+    );
     return {
       success: true,
-      message: `Internet access ${action} for ${mac}`,
+      message: `Internet access ${action} for ${targetMac} (parental-control, restart_firewall).`,
     };
   }
 
@@ -362,13 +474,20 @@ export class AsusWrtProvider implements RouterProvider {
    * firmware can report this at all (e.g. via a clientlist field); wire it here
    * if a reliable signal is found.
    */
-  async getBlockState(_mac: string): Promise<boolean | null> {
-    // Best-effort: stock ASUS firmware does not expose a reliable per-MAC block
-    // read via the CGI API. Returning null signals "unknown" so drift reconcile
-    // re-applies the intended state. The Phase 8 live test probes whether the
-    // firmware can report this at all (e.g. via a clientlist field); wire it here
-    // if a reliable signal is found.
-    return null;
+  async getBlockState(mac: string): Promise<boolean | null> {
+    // Read the parental-control table and report whether this MAC has a 24/7
+    // block (ENABLE=2). A time-schedule entry (ENABLE=1) or absence is "not
+    // hard-blocked" → false. Any failure returns null ("unknown") so drift
+    // reconcile re-applies rather than assuming a state.
+    try {
+      await this.ensureAuthenticated();
+      const { macs, enables } = await this.readMultifilter();
+      const idx = macs.findIndex((m) => m.toUpperCase() === mac.toUpperCase());
+      if (idx < 0) return false;
+      return enables[idx] === '2';
+    } catch {
+      return null;
+    }
   }
 
   // -------------------------------------------------------------------------
