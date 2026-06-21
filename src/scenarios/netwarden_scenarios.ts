@@ -310,6 +310,46 @@ registerScenario('block_service', {
   }],
 });
 
+/**
+ * block_api — tests the superadmin-gated block/unblock action layer (runBlockAction)
+ * including FORBIDDEN enforcement for plain users, block/unblock success paths,
+ * idempotency, and error mapping (DEVICE_OFFLINE → VALIDATION_FAILED, NOT_FOUND).
+ * All assertions run against an isolated in-memory SQLite DB with FakeRouterProvider.
+ */
+registerScenario('block_api', {
+  name: 'Blocking Core — superadmin-gated block/unblock API action layer',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/block-api-test → all gate + mapping assertions pass',
+    doc: {
+      description: [
+        'Calls /api/block-api-test which spins up an isolated in-memory SQLite DB (hazo_testing),',
+        'creates a superadmin user and a plain user, and runs runBlockAction with a FakeRouterProvider.',
+        'Asserts: (plain_denied_ok) plain user gets FORBIDDEN; (block_ok) superadmin blocks online device',
+        'and fake state flips to true; (idempotent_ok) second block returns alreadyInState=true;',
+        '(unblock_ok) superadmin unblocks and fake state flips back; (offline_map_ok) offline device',
+        'maps to VALIDATION_FAILED; (not_found_map_ok) unknown device maps to NOT_FOUND.',
+      ].join(' '),
+      inputs: 'GET /api/block-api-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway in-memory DB; FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/block-api-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.plain_denied_ok, true);
+      assertEqual(b.block_ok, true);
+      assertEqual(b.idempotent_ok, true);
+      assertEqual(b.unblock_ok, true);
+      assertEqual(b.offline_map_ok, true);
+      assertEqual(b.not_found_map_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',
