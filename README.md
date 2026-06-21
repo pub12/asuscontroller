@@ -17,6 +17,13 @@ npm run worker
 > The worker is a standalone process by design (see DECISIONS.md · D2). `npm run dev`
 > starts **only** the web app — it does **not** start the worker.
 
+> **Provider parity:** the worker loads `.env.local` (same as Next) and follows
+> `ROUTER_PROVIDER`. With `ROUTER_PROVIDER=asus` it drives the **same real router**
+> as the web app, so scheduled unblocks/blocks, sync and reconcile actually take
+> effect. With `fake` it uses the in-process fake (shared with the web via
+> `.fake-router-state.json`). If the worker ran a different provider than the web,
+> deferred jobs would target a different router than the one that applied the block.
+
 ### Why the worker matters (gotcha)
 
 Mutations split across the two processes:

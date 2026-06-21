@@ -17,3 +17,6 @@ logs/
 
 # Fake router shared block state (dev only)
 .fake-router-state.json
+
+# DB backups
+*.sqlite.bak*

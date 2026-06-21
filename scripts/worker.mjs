@@ -1,15 +1,18 @@
-// SAFE TO RUN locally — pure hazo_jobs/SQLite + FakeRouterProvider, ZERO network/router calls.
 // Separate process from the Next app (no instrumentation.ts).
 //
 // Usage:
-//   ROUTER_PROVIDER=fake TZ=Australia/Sydney SYNC_INTERVAL_SEC=60 node --conditions=react-server scripts/worker.mjs
+//   TZ=Australia/Sydney SYNC_INTERVAL_SEC=60 node --conditions=react-server scripts/worker.mjs
 //
-// NOTE: --conditions=react-server is REQUIRED for the audit drain (hazo_audit/server imports 'server-only').
+// Provider mode follows ROUTER_PROVIDER (loaded from .env.local, same as the web app):
+//   fake → in-process FakeRouterProvider, ZERO network/router calls (safe to run anywhere).
+//   asus → real AsusWrtProvider; the worker drives the SAME router as the web app so
+//          deferred jobs (scheduled unblock, sync, reconcile) actually take effect.
+//
+// NOTE: --conditions=react-server is REQUIRED for the audit drain and AsusWrtProvider/secrets
+//       (they import 'server-only', which resolves to a no-op under this condition).
 // NOTE: TZ=Australia/Sydney is REQUIRED — schedules evaluate in AEST.
-//
-// ROUTER_PROVIDER=asus is explicitly blocked — this build has no hardware access.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -21,20 +24,32 @@ const repoRoot = path.resolve(__dirname, '..');
 const DB_PATH = path.join(repoRoot, 'netwarden.sqlite');
 
 // ---------------------------------------------------------------------------
-// Guard: ROUTER_PROVIDER
+// Environment — Next.js auto-loads .env.local, but this standalone worker does
+// not. Load it here so ROUTER_PROVIDER and the ASUS router credentials/secret
+// keys match the web app. Explicit env (e.g. set on the npm script) wins.
+// ---------------------------------------------------------------------------
+for (const file of ['.env.local', '.env']) {
+  const p = path.join(repoRoot, file);
+  if (existsSync(p)) {
+    try {
+      process.loadEnvFile(p);
+    } catch (err) {
+      console.error(`[worker] Failed to load ${file}: ${err?.message ?? err}`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Guard: ROUTER_PROVIDER — 'fake' (in-process) or 'asus' (real router).
+// asus is now supported: the worker must drive the SAME router as the web app,
+// otherwise deferred jobs (scheduled unblock, sync, reconcile) operate on a
+// different provider than the one that applied the block.
 // ---------------------------------------------------------------------------
 const providerMode = process.env.ROUTER_PROVIDER || 'fake';
 
-if (providerMode === 'asus') {
+if (providerMode !== 'fake' && providerMode !== 'asus') {
   console.error(
-    '[worker] ROUTER_PROVIDER=asus is not supported in this build (hardware-blocked). Set ROUTER_PROVIDER=fake.',
-  );
-  process.exit(1);
-}
-
-if (providerMode !== 'fake') {
-  console.error(
-    `[worker] Unknown ROUTER_PROVIDER="${providerMode}". Only "fake" is supported. Set ROUTER_PROVIDER=fake.`,
+    `[worker] Unknown ROUTER_PROVIDER="${providerMode}". Use "fake" or "asus".`,
   );
   process.exit(1);
 }
@@ -222,6 +237,8 @@ const auditWorker = startAuditWorker({ app_adapter: auditAdapter });
 // native type-stripping; relative path required, no @/ alias resolution)
 // ---------------------------------------------------------------------------
 const { FakeRouterProvider, fakeRouterStatePath } = await import('../src/server/router/FakeRouterProvider.ts');
+// AsusWrtProvider is imported lazily (only in asus mode) so fake-mode runs never
+// pull in 'server-only' / secrets / hazo_secure.
 const { runDeviceSync } = await import('../src/server/sync/runDeviceSync.ts');
 const { pruneEvents } = await import('../src/server/retention/pruneEvents.ts');
 const { runTelemetryIngest } = await import('../src/server/telemetry/runTelemetryIngest.ts');
@@ -234,9 +251,25 @@ const { createNotifyProvider, isNotifyConfigured } = await import('../src/server
 const notify = createNotifyProvider();
 console.log(`[worker] Ops alerting: ${isNotifyConfigured() ? 'enabled' : 'disabled (TELEGRAM_* unset)'}`);
 
-// Share block state with the web process via a file so a scheduled unblock
-// fired here isn't resurrected by the web app's pull-reconcile (and vice-versa).
-const provider = new FakeRouterProvider(undefined, { persistPath: fakeRouterStatePath() });
+let provider;
+if (providerMode === 'asus') {
+  const { AsusWrtProvider } = await import('../src/server/router/AsusWrtProvider.ts');
+  provider = new AsusWrtProvider();
+  // Fail fast with a clear message if credentials/router are unreachable, so a
+  // mis-config surfaces at boot rather than silently as never-firing unblocks.
+  try {
+    await provider.login();
+    console.log('[worker] ASUS router login OK.');
+  } catch (err) {
+    console.error(`[worker] ASUS router login FAILED: ${err?.message ?? err}`);
+    console.error('[worker] Check ROUTER_* credentials in .env.local and router reachability.');
+    process.exit(1);
+  }
+} else {
+  // Share block state with the web process via a file so a scheduled unblock
+  // fired here isn't resurrected by the web app's pull-reconcile (and vice-versa).
+  provider = new FakeRouterProvider(undefined, { persistPath: fakeRouterStatePath() });
+}
 const telemetryProvider = new FakeTelemetryProvider();
 
 // ---------------------------------------------------------------------------

@@ -18,8 +18,12 @@
  * (src/server/router/index.ts) and driven by runDeviceSync.
  */
 import 'server-only';
-import { getRouterCredentials } from '../secrets';
-import { parseAsusClientList } from './parseAsusClientList';
+// Explicit .ts extensions so the plain-Node sync worker (scripts/worker.mjs)
+// can import this module directly under `node --conditions=react-server`, which
+// strips TS types but does NOT resolve extensionless relative specifiers.
+// allowImportingTsExtensions (tsconfig) keeps tsc/Next happy with these.
+import { getRouterCredentials } from '../secrets.ts';
+import { parseAsusClientList } from './parseAsusClientList.ts';
 import type {
   RouterProvider,
   RouterClient,
