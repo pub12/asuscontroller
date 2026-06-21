@@ -23,6 +23,8 @@ export interface AppEnvVars {
   NEXTDNS_API_KEY: string | undefined;
   ROUTER_PROVIDER: string | undefined;
   SYNC_INTERVAL_SEC: string | undefined;
+  TELEMETRY_PROVIDER: string | undefined;
+  TELEMETRY_INGEST_SEC: string | undefined;
 }
 
 /**
@@ -44,6 +46,8 @@ export function getAppEnv(): AppEnvVars {
     NEXTDNS_API_KEY: process.env['NEXTDNS_API_KEY'],
     ROUTER_PROVIDER: process.env['ROUTER_PROVIDER'],
     SYNC_INTERVAL_SEC: process.env['SYNC_INTERVAL_SEC'],
+    TELEMETRY_PROVIDER: process.env['TELEMETRY_PROVIDER'],
+    TELEMETRY_INGEST_SEC: process.env['TELEMETRY_INGEST_SEC'],
   };
 }
 
@@ -63,6 +67,21 @@ export function getRouterProviderMode(): 'fake' | 'asus' {
 }
 
 /**
+ * Return the active telemetry provider mode.
+ * Defaults to `'fake'` when TELEMETRY_PROVIDER is unset.
+ * Throws a clear error if set to an unrecognised value.
+ */
+export function getTelemetryProviderMode(): 'fake' | 'nextdns' {
+  const raw = process.env['TELEMETRY_PROVIDER'];
+  if (raw === undefined || raw === '') return 'fake';
+  if (raw === 'fake' || raw === 'nextdns') return raw;
+  throw new Error(
+    `[netwarden] TELEMETRY_PROVIDER has unrecognised value "${raw}". ` +
+      `Expected "fake" or "nextdns".`
+  );
+}
+
+/**
  * Return the sync-worker polling interval in seconds.
  * Defaults to `60` when SYNC_INTERVAL_SEC is unset.
  * Throws a clear error if set but not a positive integer.
@@ -75,6 +94,24 @@ export function getSyncIntervalSec(): number {
     throw new Error(
       `[netwarden] SYNC_INTERVAL_SEC has invalid value "${raw}". ` +
         `Expected a positive integer (e.g. 60).`
+    );
+  }
+  return parsed;
+}
+
+/**
+ * Return the telemetry ingest interval in seconds.
+ * Defaults to `300` when TELEMETRY_INGEST_SEC is unset.
+ * Throws a clear error if set but not a positive integer.
+ */
+export function getTelemetryIngestSec(): number {
+  const raw = process.env['TELEMETRY_INGEST_SEC'];
+  if (raw === undefined || raw === '') return 300;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== raw.trim()) {
+    throw new Error(
+      `[netwarden] TELEMETRY_INGEST_SEC has invalid value "${raw}". ` +
+        `Expected a positive integer (e.g. 300).`
     );
   }
   return parsed;
