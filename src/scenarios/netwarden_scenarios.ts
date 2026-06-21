@@ -259,6 +259,57 @@ registerScenario('block_sim', {
   }],
 });
 
+/**
+ * block_service — exercises blockDevice / unblockDevice against a temp SQLite DB.
+ *
+ * Covers: block success, state row write, hazo_state marker CAS, FakeRouterProvider
+ * sync, audit outbox capture, intent emission, idempotency (no double-intent on
+ * repeat block), unblock lifecycle, offline device rejection, and not-found rejection.
+ */
+registerScenario('block_service', {
+  name: 'Blocking Core — blockDevice / unblockDevice service',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/block-service-test → all block/unblock/guard assertions pass',
+    doc: {
+      description: [
+        'Calls /api/block-service-test which runs the full blockDevice/unblockDevice lifecycle',
+        'against a throwaway temp SQLite DB. Asserts:',
+        '(block_ok) blockDevice returns blocked=true, routerSynced=true, alreadyInState=false;',
+        '(state_row_ok) app_block_state row has is_blocked==1 and correct blocked_by;',
+        '(marker_ok) hazo_state key block:d1 holds { blocked: true };',
+        '(provider_ok) FakeRouterProvider.getBlockState returns true after block;',
+        '(intent_ok) at least one hazo_audit_intent row with event_name=device_blocked, subject_id=d1;',
+        '(outbox_ok) at least one hazo_audit_outbox row exists (capture fired);',
+        '(idempotent_ok) second blockDevice call returns alreadyInState=true and emits no new intent;',
+        '(unblock_ok) unblockDevice leaves is_blocked==0, fake unblocked, device_unblocked intent present;',
+        '(offline_reject_ok) blockDevice on an offline device throws BlockServiceError DEVICE_OFFLINE;',
+        '(not_found_ok) blockDevice on unknown id throws BlockServiceError NOT_FOUND.',
+      ].join(' '),
+      inputs: 'GET /api/block-service-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/block-service-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.block_ok, true);
+      assertEqual(b.state_row_ok, true);
+      assertEqual(b.marker_ok, true);
+      assertEqual(b.provider_ok, true);
+      assertEqual(b.intent_ok, true);
+      assertEqual(b.outbox_ok, true);
+      assertEqual(b.idempotent_ok, true);
+      assertEqual(b.unblock_ok, true);
+      assertEqual(b.offline_reject_ok, true);
+      assertEqual(b.not_found_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',
