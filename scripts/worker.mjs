@@ -225,6 +225,10 @@ const handler = async (job) => {
     });
     throw err;
   }
+  if (summary?.inserted > 0) {
+    const { notifyNewDevices } = await import('../src/server/notify/events.ts');
+    await notifyNewDevices(notify, { count: summary.inserted });
+  }
   console.log('[worker] netwarden.sync processed job', job.id, JSON.stringify(summary));
   try {
     const drained = await auditWorker.drainOnce();

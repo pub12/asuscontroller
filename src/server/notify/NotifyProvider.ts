@@ -118,3 +118,15 @@ export function createNotifyProvider(opts?: NotifyProviderOptions): NotifyProvid
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Shared singleton accessor (for request paths / routes)
+// ---------------------------------------------------------------------------
+
+let _shared: NotifyProvider | null = null;
+
+/** Lazy process-wide provider for request paths (routes). Reuses one dedupe map. */
+export function getSharedNotifyProvider(): NotifyProvider {
+  if (_shared === null) _shared = createNotifyProvider();
+  return _shared;
+}

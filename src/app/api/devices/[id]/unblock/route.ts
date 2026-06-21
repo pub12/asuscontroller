@@ -4,6 +4,8 @@ import { getDb } from '@/server/db';
 import { getRouterProvider } from '@/server/router';
 import { runBlockAction } from '@/server/devices/blockActions';
 import { authorizeCapability } from '@/server/permissions/authorize';
+import { getSharedNotifyProvider } from '@/server/notify/NotifyProvider';
+import { notifyDeviceBlock } from '@/server/notify/events';
 
 export const POST = withRequestContext(
   async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -27,6 +29,11 @@ export const POST = withRequestContext(
     );
     if (outcome.ok === false) return fail(outcome.code, outcome.message);
     const r = outcome.result;
+    await notifyDeviceBlock(getSharedNotifyProvider(), {
+      action: 'unblock',
+      deviceLabel: r.device?.friendly_name ?? r.device?.hostname ?? r.device?.mac ?? id,
+      actor: auth.subject ?? 'unknown',
+    });
     return ok({ device: r.device, blocked: r.blocked, alreadyInState: r.alreadyInState, routerSynced: r.routerSynced });
   },
 );

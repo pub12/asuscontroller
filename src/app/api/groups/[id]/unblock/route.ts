@@ -4,6 +4,8 @@ import { getDb } from '@/server/db';
 import { getRouterProvider } from '@/server/router';
 import { runGroupBlockAction } from '@/server/groups/groupBlockActions';
 import { authorizeCapability } from '@/server/permissions/authorize';
+import { getSharedNotifyProvider } from '@/server/notify/NotifyProvider';
+import { notifyGroupBlockAll } from '@/server/notify/events';
 
 export const POST = withRequestContext(
   async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
@@ -26,6 +28,13 @@ export const POST = withRequestContext(
       id, 'unblock',
     );
     if (outcome.ok === false) return fail(outcome.code, outcome.message);
+    await notifyGroupBlockAll(getSharedNotifyProvider(), {
+      action: 'unblock',
+      groupId: id,
+      memberCount: outcome.summary.memberCount,
+      affectedCount: outcome.summary.affected.length,
+      actor: auth.subject ?? 'unknown',
+    });
     return ok(outcome.summary);
   },
 );

@@ -785,6 +785,34 @@ registerScenario('group_block', {
   }],
 });
 
+registerScenario('notify-events', {
+  name: 'Notify Events — domain-event alert mapping helpers',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'device_block, device_unblock, group_block_all, new_devices, zero_noop, escape, unconfigured all pass',
+    doc: {
+      description: 'Calls /api/notify-events-test which exercises notifyDeviceBlock, notifyGroupBlockAll, and notifyNewDevices against recording fake providers. Verifies alert content, zero-count no-op, HTML escaping, and unconfigured no-op.',
+      inputs: 'GET /api/notify-events-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses injected fakes — zero real network calls. Real Telegram delivery is NOT smoke-tested (no token required).',
+    },
+    run: async () => {
+      const res = await fetch('/api/notify-events-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.device_block_alerts_ok, true);
+      assertEqual(b.device_unblock_alerts_ok, true);
+      assertEqual(b.group_block_all_alerts_ok, true);
+      assertEqual(b.new_devices_alerts_ok, true);
+      assertEqual(b.new_devices_zero_noop_ok, true);
+      assertEqual(b.escapes_label_ok, true);
+      assertEqual(b.unconfigured_noop_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('notify', {
   name: 'Notify — NotifyProvider ops-alerting seam',
   pkg: 'netwarden',
