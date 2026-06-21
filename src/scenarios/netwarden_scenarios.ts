@@ -539,3 +539,91 @@ registerScenario('sync_test', {
     },
   }],
 });
+
+/**
+ * authorize — exercises authorizeCapability against a temp SQLite DB.
+ *
+ * Covers: superadmin bypass, global grant allow, group-scoped device allow,
+ * group-scoped device deny, group action allow, no-grant deny, and audit
+ * emission of 'capability_checked' intent with decision='deny'.
+ */
+registerScenario('authorize', {
+  name: 'Permissions — authorizeCapability decision engine',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/authorize-test → all authz decision assertions pass',
+    doc: {
+      description: [
+        'Calls /api/authorize-test which spins up a throwaway temp SQLite DB, inserts test',
+        'groups/devices/grants, and runs authorizeCapability for multiple scenarios.',
+        'Asserts: (superadmin_allow) superadmin allowed with no grant;',
+        '(global_grant_allow) non-superadmin with a global device.block grant allowed for any device;',
+        '(group_device_allow) user with device.block grant scoped to g1 allowed for a device in g1;',
+        '(group_device_deny) same user denied for a device NOT in g1;',
+        '(group_action_allow) user with group.block grant scoped to g1 allowed for group target {scopeId:g1};',
+        '(no_grant_deny) user with no grants is denied;',
+        '(deny_audited) after a deny, a hazo_audit_intent row with event_name=capability_checked',
+        'and payload containing "decision":"deny" exists.',
+      ].join(' '),
+      inputs: 'GET /api/authorize-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok and *_allow/*_deny flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. Zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/authorize-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.superadmin_allow, true);
+      assertEqual(b.global_grant_allow, true);
+      assertEqual(b.group_device_allow, true);
+      assertEqual(b.group_device_deny, true);
+      assertEqual(b.group_action_allow, true);
+      assertEqual(b.no_grant_deny, true);
+      assertEqual(b.deny_audited, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
+/**
+ * grants — exercises grantsService CRUD helpers against a temp SQLite DB.
+ *
+ * Covers: createGrant, duplicate idempotency, createRequest → approveRequest,
+ * createRequest → declineRequest, and revokeGrant lifecycle.
+ */
+registerScenario('grants', {
+  name: 'Permissions — grantsService CRUD lifecycle',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/grants-test → all grant/request CRUD assertions pass',
+    doc: {
+      description: [
+        'Calls /api/grants-test which spins up a throwaway temp SQLite DB and exercises',
+        'the grantsService helpers.',
+        'Asserts: (create_grant_ok) createGrant inserts an active grant;',
+        '(duplicate_idempotent_ok) createGrant with the same (subject,capability,scope) succeeds',
+        'without throwing and leaves exactly one row;',
+        '(request_approve_creates_grant_ok) createRequest → approveRequest returns a grant and',
+        'request status becomes "approved";',
+        '(decline_ok) createRequest → declineRequest sets status "declined", no grant created;',
+        '(revoke_ok) revokeGrant sets status "revoked" and findActiveGrants no longer returns it.',
+      ].join(' '),
+      inputs: 'GET /api/grants-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. Zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/grants-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.create_grant_ok, true);
+      assertEqual(b.duplicate_idempotent_ok, true);
+      assertEqual(b.request_approve_creates_grant_ok, true);
+      assertEqual(b.decline_ok, true);
+      assertEqual(b.revoke_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});

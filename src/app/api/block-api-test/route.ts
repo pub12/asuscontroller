@@ -97,7 +97,7 @@ async function runTests() {
     // Assertion: plain_denied_ok — non-superadmin gets FORBIDDEN
     const plainOutcome = await runBlockAction(
       adapter, fake,
-      { isSuperadmin: plainSA, actorLabel: plainUser.email ?? 'plain' },
+      { authorized: plainSA, actorLabel: plainUser.email ?? 'plain' },
       'd1', 'block',
     );
     const plain_denied_ok = plainSA === false && plainOutcome.ok === false && plainOutcome.code === 'FORBIDDEN';
@@ -105,7 +105,7 @@ async function runTests() {
     // Assertion: block_ok — superadmin blocks online device
     const blockOutcome = await runBlockAction(
       adapter, fake,
-      { isSuperadmin: superSA, actorLabel: superUser.email ?? 'super' },
+      { authorized: superSA, actorLabel: superUser.email ?? 'super' },
       'd1', 'block',
     );
     const fakeBlockedAfterBlock = await fake.getBlockState('AA:BB:CC:00:00:99');
@@ -114,7 +114,7 @@ async function runTests() {
     // Assertion: idempotent_ok — second block returns alreadyInState=true
     const idempotentOutcome = await runBlockAction(
       adapter, fake,
-      { isSuperadmin: superSA, actorLabel: superUser.email ?? 'super' },
+      { authorized: superSA, actorLabel: superUser.email ?? 'super' },
       'd1', 'block',
     );
     const idempotent_ok = idempotentOutcome.ok === true && idempotentOutcome.result.alreadyInState === true;
@@ -122,7 +122,7 @@ async function runTests() {
     // Assertion: unblock_ok — superadmin unblocks
     const unblockOutcome = await runBlockAction(
       adapter, fake,
-      { isSuperadmin: superSA, actorLabel: superUser.email ?? 'super' },
+      { authorized: superSA, actorLabel: superUser.email ?? 'super' },
       'd1', 'unblock',
     );
     const fakeBlockedAfterUnblock = await fake.getBlockState('AA:BB:CC:00:00:99');
@@ -131,7 +131,7 @@ async function runTests() {
     // Assertion: offline_map_ok — offline device maps to VALIDATION_FAILED
     const offlineOutcome = await runBlockAction(
       adapter, fake,
-      { isSuperadmin: superSA, actorLabel: superUser.email ?? 'super' },
+      { authorized: superSA, actorLabel: superUser.email ?? 'super' },
       'd2', 'block',
     );
     const offline_map_ok = offlineOutcome.ok === false && offlineOutcome.code === 'VALIDATION_FAILED';
@@ -139,7 +139,7 @@ async function runTests() {
     // Assertion: not_found_map_ok — unknown device maps to NOT_FOUND
     const notFoundOutcome = await runBlockAction(
       adapter, fake,
-      { isSuperadmin: superSA, actorLabel: superUser.email ?? 'super' },
+      { authorized: superSA, actorLabel: superUser.email ?? 'super' },
       'nope', 'block',
     );
     const not_found_map_ok = notFoundOutcome.ok === false && notFoundOutcome.code === 'NOT_FOUND';

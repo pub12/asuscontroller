@@ -4,6 +4,7 @@ import { resolveServerAuth } from '@/server/auth';
 import { getDb } from '@/server/db';
 import { getRouterProvider } from '@/server/router';
 import { runBlockAction } from '@/server/devices/blockActions';
+import { authorizeCapability } from '@/server/permissions/authorize';
 
 const Body = z.object({ reason: z.string().max(2000).nullable().optional() });
 
@@ -19,10 +20,18 @@ export const POST = withRequestContext(
     if (!parsed.success) return fail('VALIDATION_FAILED', 'Invalid fields');
     reason = parsed.data.reason ?? undefined;
 
+    const decision = await authorizeCapability(
+      getDb(),
+      { subject: auth.subject, isSuperadmin: auth.isSuperadmin },
+      'device.block',
+      { deviceId: id },
+    );
+    if (!decision.allowed) return fail('FORBIDDEN', decision.reason);
+
     const provider = await getRouterProvider();
     const outcome = await runBlockAction(
       getDb(), provider,
-      { isSuperadmin: auth.isSuperadmin, actorLabel: auth.subject ?? 'unknown' },
+      { authorized: true, actorLabel: auth.subject ?? 'unknown', actorUserId: auth.subject },
       id, 'block', reason,
     );
     if (outcome.ok === false) return fail(outcome.code, outcome.message);

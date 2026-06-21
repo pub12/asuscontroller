@@ -11,13 +11,13 @@ export type BlockActionOutcome =
 export async function runBlockAction(
   adapter: HazoConnectAdapter,
   provider: RouterProvider,
-  gate: { isSuperadmin: boolean; actorLabel: string },
+  gate: { authorized: boolean; actorLabel: string; actorUserId?: string | null },
   deviceId: string,
   action: BlockAction,
   reason?: string,
 ): Promise<BlockActionOutcome> {
-  if (!gate.isSuperadmin) return { ok: false, code: 'FORBIDDEN', message: 'Superadmin required' };
-  const actor = { label: gate.actorLabel };
+  if (!gate.authorized) return { ok: false, code: 'FORBIDDEN', message: 'Not authorized' };
+  const actor = { userId: gate.actorUserId ?? null, label: gate.actorLabel };
   try {
     const result = action === 'block'
       ? await blockDevice(adapter, provider, deviceId, { actor, reason })
