@@ -493,6 +493,7 @@ export function DevicesScreen({ devices, groups, isSuperadmin }: Props) {
             enableSearch
             searchPlaceholder="Search devices…"
             loading={isPending}
+            onRowClick={(d) => router.push(`/explore/${d.id}`)}
             empty={
               <EmptyState
                 title="No devices yet"
