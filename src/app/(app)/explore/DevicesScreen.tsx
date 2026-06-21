@@ -19,6 +19,8 @@ import {
   Pencil,
   Ban,
   ShieldCheck,
+  RefreshCw,
+  MapPin,
 } from 'lucide-react';
 import {
   HazoUiTable,
@@ -66,6 +68,8 @@ interface Props {
   devices: DeviceRow[];
   groups: GroupRow[];
   isSuperadmin: boolean;
+  /** id of the device matching the viewer's IP, if any — gets a "This device" tag. */
+  currentDeviceId?: string | null;
 }
 
 type Tab = 'devices' | 'groups';
@@ -116,6 +120,18 @@ function BlockedBadge() {
     <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
       <Ban className="h-3 w-3" />
       Blocked
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// "This device" badge
+// ---------------------------------------------------------------------------
+function ThisDeviceBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+      <MapPin className="h-3 w-3" />
+      This device
     </span>
   );
 }
@@ -295,12 +311,47 @@ function GroupsList({ groups }: { groups: GroupRow[] }) {
 // ---------------------------------------------------------------------------
 // DevicesScreen
 // ---------------------------------------------------------------------------
-export function DevicesScreen({ devices, groups, isSuperadmin }: Props) {
+export function DevicesScreen({ devices, groups, isSuperadmin, currentDeviceId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>('devices');
   const [editState, setEditState] = useState<EditState | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<DeviceRow | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Counts for the header summary.
+  const total = devices.length;
+  const onlineCount = devices.filter((d) => d.status === 'online').length;
+  const blockedCount = devices.filter((d) => !!d.is_blocked).length;
+
+  // ------------------------------------------------------------------
+  // Refresh: re-sync devices AND pull live block state from the router.
+  // (Unlike the worker, this mirrors router truth — so a block/unblock done
+  // directly on the router is reflected here, clearing a stale badge.)
+  // ------------------------------------------------------------------
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/sync/refresh', { method: 'POST' });
+      const json = (await res.json()) as {
+        ok: boolean;
+        data?: { summary?: { seen: number; inserted: number; block_pulled: number } };
+        error?: { message: string };
+      };
+      if (!json.ok) {
+        errorToast({ title: 'Refresh failed', description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      const s = json.data?.summary;
+      const extra = s?.block_pulled ? ` · ${s.block_pulled} block change(s)` : '';
+      successToast({ title: 'Refreshed from router', description: s ? `${s.seen} device(s) seen${extra}` : undefined });
+      startTransition(() => { router.refresh(); });
+    } catch (e) {
+      errorToast({ title: 'Refresh failed', description: e instanceof Error ? e.message : 'Network error' });
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // ------------------------------------------------------------------
   // Acknowledge a "new" device
@@ -372,6 +423,7 @@ export function DevicesScreen({ devices, groups, isSuperadmin }: Props) {
           <span className="flex items-center gap-2">
             <IconComp className="h-4 w-4 flex-shrink-0 text-gray-400" />
             <span className="font-medium text-gray-800">{deviceDisplayName(d)}</span>
+            {currentDeviceId && d.id === currentDeviceId && <ThisDeviceBadge />}
             {!!d.is_blocked && <BlockedBadge />}
           </span>
         );
@@ -462,6 +514,16 @@ export function DevicesScreen({ devices, groups, isSuperadmin }: Props) {
       {/* Page heading */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Explore</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleRefresh()}
+          disabled={refreshing || isPending}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing…' : 'Refresh'}
+        </Button>
       </div>
 
       {/* Tab toggle */}
@@ -486,6 +548,27 @@ export function DevicesScreen({ devices, groups, isSuperadmin }: Props) {
         <GroupsList groups={groups} />
       ) : (
         <div className="rounded-lg border border-gray-200">
+          {/* Device counter */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 px-4 py-2.5 text-sm">
+            <span className="font-medium text-gray-800">
+              {total} {total === 1 ? 'device' : 'devices'}
+            </span>
+            <span className="text-gray-400">·</span>
+            <span className="inline-flex items-center gap-1 text-green-700">
+              <Wifi className="h-3.5 w-3.5" />
+              {onlineCount} online
+            </span>
+            <span className="inline-flex items-center gap-1 text-gray-500">
+              <WifiOff className="h-3.5 w-3.5" />
+              {total - onlineCount} offline
+            </span>
+            {blockedCount > 0 && (
+              <span className="inline-flex items-center gap-1 text-red-600">
+                <Ban className="h-3.5 w-3.5" />
+                {blockedCount} blocked
+              </span>
+            )}
+          </div>
           <HazoUiTable<DeviceRow>
             columns={columns}
             rows={devices}

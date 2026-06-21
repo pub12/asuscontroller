@@ -165,6 +165,16 @@ export interface RouterProvider {
    */
   getBlockState?(mac: string): Promise<boolean | null>;
 
+  /**
+   * Bulk read of every MAC the router is currently hard-blocking.
+   *
+   * One round-trip for the whole table rather than a getBlockState() per device,
+   * so a manual "Refresh" can mirror live router truth across all devices cheaply.
+   * Optional: providers that cannot enumerate block state omit it. Throws on a
+   * read failure (so callers can distinguish an error from "nothing blocked").
+   */
+  getBlockedMacs?(): Promise<string[]>;
+
   // -------------------------------------------------------------------------
   // Capabilities
   // -------------------------------------------------------------------------

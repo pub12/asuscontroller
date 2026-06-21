@@ -56,9 +56,11 @@ type RawEntry = Record<string, unknown>;
  * Parse the `get_clientlist` payload into RouterClient records.
  *
  * Accepts either the full response object (`{ get_clientlist: {...} }`) or the
- * inner map directly. Returns ONLY currently-connected clients (`isOnline === "1"`),
- * because runDeviceSync treats every returned client as online and reconciles
- * absent devices to offline — handing it offline rows would mislabel them.
+ * inner map directly. Returns EVERY device the router knows about — both
+ * currently-connected (`isOnline === "1"`) and recently-seen-but-offline — each
+ * carrying a `connected` flag. runDeviceSync writes that flag straight to
+ * app_devices.status, so offline devices (a TV in standby, a phone that left)
+ * are persisted and shown instead of silently dropped.
  *
  * Display name preference: nickName (the user's ASUS-app label) → name
  * (client-reported hostname) → a short MAC-derived fallback so the row is never
@@ -81,7 +83,7 @@ export function parseAsusClientList(payload: unknown): RouterClient[] {
     if (value == null || typeof value !== 'object') continue;
 
     const e = value as RawEntry;
-    if (String(e['isOnline']) !== '1') continue; // connected devices only
+    const connected = String(e['isOnline']) === '1';
 
     const mac = (typeof e['mac'] === 'string' && e['mac'] ? e['mac'] : key).toUpperCase();
     const nickName = typeof e['nickName'] === 'string' ? e['nickName'].trim() : '';
@@ -95,7 +97,7 @@ export function parseAsusClientList(payload: unknown): RouterClient[] {
       mac,
       ip,
       name: displayName,
-      connected: true,
+      connected,
       band: bandFromIsWL(e['isWL']),
       vendor,
     });

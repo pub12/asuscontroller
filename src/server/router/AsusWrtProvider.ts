@@ -260,7 +260,8 @@ export class AsusWrtProvider implements RouterProvider {
     }
 
     const clients = parseAsusClientList(json);
-    console.log(`[AsusWrtProvider] getClientList(): ${clients.length} online client(s) found.`);
+    const online = clients.filter((c) => c.connected).length;
+    console.log(`[AsusWrtProvider] getClientList(): ${clients.length} client(s) (${online} online).`);
     return clients;
   }
 
@@ -488,6 +489,25 @@ export class AsusWrtProvider implements RouterProvider {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Bulk read of every MAC the router is currently hard-blocking (ENABLE=2).
+   *
+   * One readMultifilter (4 nvram reads) instead of a getBlockState() per device,
+   * so a full reconcile of N devices costs a constant 4 requests rather than 4N.
+   * Used by the manual "Refresh" pull-reconcile to mirror live router truth into
+   * app_block_state. Throws on transport failure so callers can distinguish a
+   * read error from "nothing blocked".
+   */
+  async getBlockedMacs(): Promise<string[]> {
+    await this.ensureAuthenticated();
+    const { macs, enables } = await this.readMultifilter();
+    const blocked: string[] = [];
+    for (let i = 0; i < macs.length; i++) {
+      if (enables[i] === '2') blocked.push(macs[i].toUpperCase());
+    }
+    return blocked;
   }
 
   // -------------------------------------------------------------------------

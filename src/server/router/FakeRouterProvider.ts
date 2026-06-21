@@ -129,6 +129,15 @@ export class FakeRouterProvider implements RouterProvider {
     return this._blocked.get(mac) ?? false;
   }
 
+  /** Bulk read of every MAC currently blocked in the fake's in-memory state. */
+  async getBlockedMacs(): Promise<string[]> {
+    const blocked: string[] = [];
+    for (const [mac, isBlocked] of this._blocked.entries()) {
+      if (isBlocked) blocked.push(mac.toUpperCase());
+    }
+    return blocked;
+  }
+
   // -------------------------------------------------------------------------
   // RouterProvider — capabilities
   // -------------------------------------------------------------------------
