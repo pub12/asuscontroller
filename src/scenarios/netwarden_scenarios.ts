@@ -670,6 +670,42 @@ registerScenario('groups_crud', {
   }],
 });
 
+registerScenario('group_images', {
+  name: 'Groups — image upload, store, and serve (local seam)',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/groups-image-test → roundtrip, validation, traversal-safe, missing-null all pass',
+    doc: {
+      description: [
+        'Calls /api/groups-image-test which exercises imageService directly (no HTTP multipart).',
+        'Asserts: (roundtrip_ok) storeGroupImage with a 1×1 PNG returns a truthy fileId;',
+        'loadGroupImage(fileId, "main") returns non-null buffer and image/* contentType;',
+        'loadGroupImage(fileId, "thumb") returns non-null buffer;',
+        '(reject_non_image_ok) validateImageUpload with application/pdf → ok===false;',
+        '(reject_oversize_ok) validateImageUpload with 99MB image/png → ok===false;',
+        '(traversal_safe_ok) loadGroupImage("../../etc/passwd") and loadGroupImage("not-a-uuid") both null;',
+        '(missing_returns_null_ok) loadGroupImage with a valid UUID that was never stored → null.',
+        'Cleans up stored files in finally block.',
+      ].join(' '),
+      inputs: 'GET /api/groups-image-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Writes two files temporarily to data/group-images/; deletes them in finally.',
+    },
+    run: async () => {
+      const res = await fetch('/api/groups-image-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.roundtrip_ok, true);
+      assertEqual(b.reject_non_image_ok, true);
+      assertEqual(b.reject_oversize_ok, true);
+      assertEqual(b.traversal_safe_ok, true);
+      assertEqual(b.missing_returns_null_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('grants', {
   name: 'Permissions — grantsService CRUD lifecycle',
   pkg: 'netwarden',

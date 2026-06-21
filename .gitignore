@@ -11,3 +11,6 @@ jobs-spike-marker.txt
 
 # runtime logs
 logs/
+
+# group images and other runtime data
+/data/

@@ -362,6 +362,20 @@ export const groupRemoveMemberRoute = defineRoute({
   },
 });
 
+export const groupImageUploadRoute = defineRoute({
+  method: 'POST',
+  path: '/api/groups/image',
+  summary: 'Upload a group image (returns image_file_id)',
+  responses: {
+    200: {
+      description: 'Uploaded image file ID',
+      schema: z.object({ image_file_id: z.string() }),
+    },
+    401: { description: 'Not authenticated' },
+    422: { description: 'Validation failed (bad type, oversize, no file)' },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -386,4 +400,5 @@ export const ALL_ROUTES = [
   groupDeleteRoute,
   groupAddMembersRoute,
   groupRemoveMemberRoute,
+  groupImageUploadRoute,
 ];
