@@ -85,3 +85,16 @@ export async function notifyScheduleFired(
   const body = `${args.targetType} ${esc(args.targetId)} (${args.affected} affected)`;
   await provider.alert({ title, body });
 }
+
+// ---------------------------------------------------------------------------
+// notifyTelemetryGap
+// ---------------------------------------------------------------------------
+
+export async function notifyTelemetryGap(
+  provider: NotifyProvider,
+  args: { reason: string },
+): Promise<void> {
+  const title = '🟡 Telemetry gap — ingest not configured';
+  const body = `Telemetry ingest skipped: ${esc(args.reason)}`;
+  await provider.alert({ title, body, dedupeKey: 'telemetry-gap' });
+}
