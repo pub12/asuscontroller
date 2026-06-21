@@ -376,6 +376,36 @@ export const groupImageUploadRoute = defineRoute({
   },
 });
 
+export const groupBlockRoute = defineRoute({
+  method: 'POST',
+  path: '/api/groups/{id}/block',
+  summary: 'Block all member devices in a group',
+  responses: {
+    200: {
+      description: 'Group block summary',
+      schema: z.object({ summary: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Not authorized' },
+    404: { description: 'Group not found' },
+  },
+});
+
+export const groupUnblockRoute = defineRoute({
+  method: 'POST',
+  path: '/api/groups/{id}/unblock',
+  summary: 'Unblock all member devices in a group',
+  responses: {
+    200: {
+      description: 'Group unblock summary',
+      schema: z.object({ summary: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Not authorized' },
+    404: { description: 'Group not found' },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -401,4 +431,6 @@ export const ALL_ROUTES = [
   groupAddMembersRoute,
   groupRemoveMemberRoute,
   groupImageUploadRoute,
+  groupBlockRoute,
+  groupUnblockRoute,
 ];

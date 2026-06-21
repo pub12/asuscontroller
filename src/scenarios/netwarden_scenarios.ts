@@ -741,3 +741,46 @@ registerScenario('grants', {
     },
   }],
 });
+
+registerScenario('group_block', {
+  name: 'Groups — group block-all/unblock-all + capability guard',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/group-block-test → all group block/unblock + authz assertions pass',
+    doc: {
+      description: [
+        'Calls /api/group-block-test which spins up a throwaway temp SQLite DB, seeds groups',
+        'and devices, and exercises runGroupBlockAction with a FakeRouterProvider.',
+        'Asserts: (all_offline_skipped_ok) all-offline group → block → affected empty,',
+        'skippedOffline = all members, failures empty, isBlocked false;',
+        '(partial_block_ok) 2 online + 1 offline → block → affected.length===2,',
+        'skippedOffline.length===1, failures empty, isBlocked false;',
+        '(all_online_blocked_ok) all-online group → block → affected.length===memberCount,',
+        'skippedOffline empty, isBlocked true;',
+        '(failure_captured_ok) orphan member (no device row) → block → orphan in failures,',
+        'online device in affected;',
+        '(unblock_ok) block then unblock all-online group → affected.length===memberCount,',
+        'isBlocked false;',
+        '(missing_group_ok) nonexistent group → { ok:false, code:NOT_FOUND };',
+        '(authorize_group_scope_ok) no grant → allowed false; after createGrant → allowed true.',
+      ].join(' '),
+      inputs: 'GET /api/group-block-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/group-block-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.all_offline_skipped_ok, true);
+      assertEqual(b.partial_block_ok, true);
+      assertEqual(b.all_online_blocked_ok, true);
+      assertEqual(b.failure_captured_ok, true);
+      assertEqual(b.unblock_ok, true);
+      assertEqual(b.missing_group_ok, true);
+      assertEqual(b.authorize_group_scope_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
