@@ -1,0 +1,38 @@
+# NetWarden
+
+Household network control for ASUS routers — device presence, blocking, timers/schedules, and domain telemetry.
+
+## Running locally
+
+NetWarden runs as **two processes**. Both must be running for the app to work fully.
+
+```bash
+# Terminal 1 — Next.js web app (UI + API)
+npm run dev
+
+# Terminal 2 — background worker (REQUIRED for timers, schedules, unblocks, sync, ingest)
+npm run worker
+```
+
+> The worker is a standalone process by design (see DECISIONS.md · D2). `npm run dev`
+> starts **only** the web app — it does **not** start the worker.
+
+### Why the worker matters (gotcha)
+
+Mutations split across the two processes:
+
+- **Blocking is applied synchronously on the API request** → a manual/timer block works
+  even if the worker is down.
+- **Auto-unblocks, scheduled block/unblock windows, sync, ingest, and retention are
+  deferred jobs** drained only by the worker.
+
+So if the worker isn't running, you'll see a device **block successfully but never
+auto-unblock** — the unblock job sits in `hazo_jobs` with `status=scheduled` and no
+consumer. Starting the worker drains overdue jobs and fires them late (DECISIONS.md ·
+D12 fire-late policy), so a stuck unblock clears as soon as `npm run worker` comes up.
+
+## Docs
+
+- `master_plan.md` — phase plan + trade-off ledger
+- `DECISIONS.md` — architecture decisions (D1–D17)
+- `CHANGELOG.md` — what shipped, by date
