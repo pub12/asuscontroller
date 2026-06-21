@@ -39,6 +39,11 @@ if (providerMode !== 'fake') {
 }
 
 // ---------------------------------------------------------------------------
+// Retention days
+// ---------------------------------------------------------------------------
+const retentionDays = Math.max(1, parseInt(process.env.RAW_EVENT_RETENTION_DAYS ?? '30', 10) || 30);
+
+// ---------------------------------------------------------------------------
 // Guard: SYNC_INTERVAL_SEC
 // ---------------------------------------------------------------------------
 const intervalSec = parseInt(process.env.SYNC_INTERVAL_SEC || '60', 10);
@@ -151,6 +156,23 @@ if (!existing) {
   console.log(`[worker] Reusing existing schedule id=${existing.id} (type=netwarden.sync, cron="${existing.cron ?? cron}")`);
 }
 
+// Idempotent retention schedule (find-or-create) — runs daily at 03:00.
+const retentionCron = '0 3 * * *';
+const existingRetention = schedules.find((s) => s.type === 'netwarden.retention');
+
+if (!existingRetention) {
+  const createdRetention = await jobs.schedules.create({
+    name: 'netwarden-retention',
+    cron: retentionCron,
+    type: 'netwarden.retention',
+    payload: {},
+    maxAttempts: 1,
+  });
+  console.log(`[worker] Created recurring schedule: id=${createdRetention.id}, cron="${retentionCron}", next_run_at=${createdRetention.next_run_at}`);
+} else {
+  console.log(`[worker] Reusing existing schedule id=${existingRetention.id} (type=netwarden.retention, cron="${existingRetention.cron ?? retentionCron}")`);
+}
+
 // ── Audit-outbox drain ──────────────────────────────────────────────────────
 // startAuditWorker needs a full hazo_connect adapter (claimRows primitive); the
 // thin adapter above only has raw/rawQuery. Open a 2nd better-sqlite3 connection
@@ -171,6 +193,7 @@ const auditWorker = startAuditWorker({ app_adapter: auditAdapter });
 // ---------------------------------------------------------------------------
 const { FakeRouterProvider } = await import('../src/server/router/FakeRouterProvider.ts');
 const { runDeviceSync } = await import('../src/server/sync/runDeviceSync.ts');
+const { pruneEvents } = await import('../src/server/retention/pruneEvents.ts');
 
 // ---------------------------------------------------------------------------
 // Ops alerting (best-effort — Telegram-direct; no-op when TELEGRAM_* unset)
@@ -207,12 +230,22 @@ const worker = createWorker({
   dialect: 'sqlite',
   tablePrefix: 'hazo_jobs',
   workerId: 'netwarden-sync-worker',
-  types: ['netwarden.sync'],
+  types: ['netwarden.sync', 'netwarden.retention'],
   pollMs: 1_000,
   concurrency: 1,
 });
 
 const handler = async (job) => {
+  if (job.type === 'netwarden.retention') {
+    try {
+      const result = await pruneEvents(adapter, { retentionDays });
+      console.log('[worker] netwarden.retention pruned', job.id, JSON.stringify(result));
+      return result;
+    } catch (err) {
+      await notify.alert({ title: '🔴 NetWarden retention prune failed', body: String(err?.message ?? err), dedupeKey: 'retention-failure' });
+      throw err;
+    }
+  }
   let summary;
   try {
     summary = await runDeviceSync(adapter, provider, new Date().toISOString(), { intervalSec });

@@ -838,3 +838,47 @@ registerScenario('notify', {
     },
   }],
 });
+
+/**
+ * retention — pruneEvents deletes stale raw domain events, leaves rollup tables intact.
+ *
+ * Covers: pure computeCutoff, deleted count, old rows gone, recent rows kept,
+ * app_domain_rollup_daily untouched, app_device_presence untouched.
+ */
+registerScenario('retention', {
+  name: 'Retention Pruning — raw domain events pruned, rollups untouched',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/retention-test → all pruning + isolation assertions pass',
+    doc: {
+      description: [
+        'Calls /api/retention-test which spins up a throwaway temp SQLite DB, inserts',
+        'two OLD domain events (60 days ago) and two RECENT events (1 day ago),',
+        'plus two app_domain_rollup_daily rows and one app_device_presence row,',
+        'then calls pruneEvents with retentionDays=30 and a fixed now.',
+        'Asserts: (cutoff_is_pure_ok) computeCutoff(2026-01-31, 30) === "2026-01-01T00:00:00.000Z";',
+        '(deleted_count_ok) returned deleted===2;',
+        '(old_rows_gone_ok) no app_domain_events rows with ts < cutoff remain;',
+        '(recent_rows_kept_ok) two recent events still present;',
+        '(rollups_untouched_ok) app_domain_rollup_daily count unchanged (===2);',
+        '(presence_untouched_ok) app_device_presence count unchanged (===1).',
+      ].join(' '),
+      inputs: 'GET /api/retention-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. Zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/retention-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.cutoff_is_pure_ok, true);
+      assertEqual(b.deleted_count_ok, true);
+      assertEqual(b.old_rows_gone_ok, true);
+      assertEqual(b.recent_rows_kept_ok, true);
+      assertEqual(b.rollups_untouched_ok, true);
+      assertEqual(b.presence_untouched_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
