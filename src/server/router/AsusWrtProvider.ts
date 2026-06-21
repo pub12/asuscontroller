@@ -175,6 +175,23 @@ export class AsusWrtProvider implements RouterProvider {
     };
   }
 
+  /**
+   * Lazily ensure a valid session token before an authed request.
+   *
+   * Callers (the block/unblock API routes, sync) construct a fresh provider per
+   * request and do NOT call login() themselves. Without this, authHeaders()
+   * throws / the request silently fails — exactly why a UI "block" recorded
+   * is_blocked=1 but router_synced=0 and never cut the device off. Re-logs in
+   * once the cached token has aged past its TTL.
+   *
+   * @throws Error if login() fails (e.g. missing credentials / bad password).
+   */
+  private async ensureAuthenticated(): Promise<void> {
+    if (!this.isAuthenticated()) {
+      await this.login();
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Read — client list
   // -------------------------------------------------------------------------
@@ -205,6 +222,8 @@ export class AsusWrtProvider implements RouterProvider {
         'AsusWrtProvider.getClientList(): ROUTER_HOST not set.'
       );
     }
+
+    await this.ensureAuthenticated();
 
     const url = `http://${host}/appGet.cgi?hook=get_clientlist()`;
     const response = await fetch(url, {
@@ -279,6 +298,18 @@ export class AsusWrtProvider implements RouterProvider {
       throw new Error(
         'AsusWrtProvider.setInternetAccess(): ROUTER_HOST not set.'
       );
+    }
+
+    // A fresh provider has no token; log in lazily so the block/unblock routes
+    // don't have to. Surface a login failure as an unsuccessful AccessResult
+    // (router_synced=0) rather than masking it as a generic network error.
+    try {
+      await this.ensureAuthenticated();
+    } catch (err) {
+      return {
+        success: false,
+        message: `Authentication failed before set_client_state: ${String(err)}`,
+      };
     }
 
     const enabledFlag = enabled ? '1' : '0';
