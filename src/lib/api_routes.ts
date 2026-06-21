@@ -239,6 +239,30 @@ export const requestDeclineRoute = defineRoute({
   },
 });
 
+export const adminUsersRoute = defineRoute({
+  method: 'GET',
+  path: '/api/admin/users',
+  summary: 'List all users (superadmin only) — safe fields only',
+  responses: {
+    200: {
+      description: 'List of users with safe fields (no password/token columns)',
+      schema: z.object({
+        users: z.array(
+          z.object({
+            id: z.string(),
+            email_address: z.string(),
+            name: z.string().nullable(),
+            status: z.string().nullable(),
+            created_at: z.string().nullable(),
+          }),
+        ),
+      }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Superadmin only' },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -255,4 +279,5 @@ export const ALL_ROUTES = [
   requestsCreateRoute,
   requestApproveRoute,
   requestDeclineRoute,
+  adminUsersRoute,
 ];
