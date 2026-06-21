@@ -22,11 +22,13 @@ import {
   listGroups,
   getGroup,
   createGroup,
+  updateGroup,
   deleteGroup,
   addMembers,
   removeMember,
   deriveGroupStatus,
 } from '@/server/groups/groupService';
+import { getDeviceDomainInsights } from '@/server/telemetry/deviceDomainInsights';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -145,6 +147,30 @@ export async function GET() {
 
     const delete_nulls_primary_ok = dev2HadPrimary && groupGone && dev2PrimaryNulled;
 
+    // ── monitoring_ok (S3: per-group privacy flag, end-to-end) ────────────────
+    // Fresh group + device + domain event; default monitoring ON, then toggle OFF.
+    const mGroup = await createGroup(adapter, { name: 'Monitoring Group', createdBy: 'tester' });
+    await deviceSvc.insert({ id: 'devM', mac: 'AA:BB:CC:00:00:0M', status: 'online', last_seen: nowIso });
+    await addMembers(adapter, mGroup.id as string, ['devM'], 'tester'); // sets devM.primary_group_id = mGroup
+    const todayIso = nowIso.slice(0, 10);
+    const domainEventSvc = createCrudService<Record<string, unknown>>(adapter, 'app_domain_events');
+    await domainEventSvc.insert({ id: 'domM_1', device_id: 'devM', domain: 'example.com', ts: nowIso, blocked: 0 });
+
+    // Default ON: monitoring_enabled defaults to 1, insights returns data.
+    const mGroupRow = await getGroup(adapter, mGroup.id as string);
+    const defaultOn = Number(mGroupRow?.group.monitoring_enabled ?? 1) === 1;
+    const insightsOn = await getDeviceDomainInsights(adapter, 'devM', todayIso, 'today');
+    const dataVisibleWhenOn = insightsOn.monitoringEnabled === true && insightsOn.topDomains.length === 1;
+
+    // Toggle OFF via the service write path.
+    await updateGroup(adapter, mGroup.id as string, { monitoringEnabled: false });
+    const mGroupRowOff = await getGroup(adapter, mGroup.id as string);
+    const persistedOff = Number(mGroupRowOff?.group.monitoring_enabled) === 0;
+    const insightsOff = await getDeviceDomainInsights(adapter, 'devM', todayIso, 'today');
+    const dataHiddenWhenOff = insightsOff.monitoringEnabled === false && insightsOff.topDomains.length === 0;
+
+    const monitoring_ok = defaultOn && dataVisibleWhenOn && persistedOff && dataHiddenWhenOff;
+
     // ── Aggregate ─────────────────────────────────────────────────────────────
     const all_ok =
       create_ok &&
@@ -152,7 +178,8 @@ export async function GET() {
       primary_on_first_add_ok &&
       block_status_ok &&
       remove_member_ok &&
-      delete_nulls_primary_ok;
+      delete_nulls_primary_ok &&
+      monitoring_ok;
 
     return Response.json({
       ok: true,
@@ -163,6 +190,7 @@ export async function GET() {
       block_status_ok,
       remove_member_ok,
       delete_nulls_primary_ok,
+      monitoring_ok,
     });
   } catch (err) {
     return Response.json({ ok: false, error: String(err) }, { status: 500 });

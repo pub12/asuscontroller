@@ -166,6 +166,7 @@ export async function updateGroup(
     color?: string | null;
     description?: string | null;
     imageFileId?: string | null;
+    monitoringEnabled?: boolean;
   },
 ): Promise<GroupRow | null> {
   const groupSvc = createCrudService<GroupRow>(adapter, 'app_groups');
@@ -178,6 +179,7 @@ export async function updateGroup(
   if ('color' in patch) sanitized.color = patch.color;
   if ('description' in patch) sanitized.description = patch.description;
   if ('imageFileId' in patch) sanitized.image_file_id = patch.imageFileId;
+  if ('monitoringEnabled' in patch) sanitized.monitoring_enabled = patch.monitoringEnabled ? 1 : 0;
 
   const updated = await groupSvc.updateById(id, sanitized);
   return (updated[0] ?? (await groupSvc.findById(id))) ?? null;

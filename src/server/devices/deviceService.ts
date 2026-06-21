@@ -30,6 +30,7 @@ export interface GroupRow extends Record<string, unknown> {
   color?: string | null;
   created_by?: string | null;
   created_at?: string;
+  monitoring_enabled?: number | null;
 }
 
 /** Annotate devices with is_blocked from app_block_state rows (pure; testable). */

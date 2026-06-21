@@ -157,6 +157,12 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
   const [editSaving, setEditSaving] = useState(false);
   const [editUploading, setEditUploading] = useState(false);
 
+  // Monitoring state
+  const [monitoringEnabled, setMonitoringEnabled] = useState<boolean>(
+    Number(group.monitoring_enabled ?? 1) !== 0,
+  );
+  const [monitoringSaving, setMonitoringSaving] = useState(false);
+
   // Add members state
   const [memberSearch, setMemberSearch] = useState('');
   const [selectedAddIds, setSelectedAddIds] = useState<Set<string>>(new Set());
@@ -263,6 +269,35 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
       errorToast({ title: 'Save failed', description: e instanceof Error ? e.message : 'Network error' });
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Toggle monitoring
+  // -----------------------------------------------------------------------
+  async function handleToggleMonitoring() {
+    const next = !monitoringEnabled;
+    setMonitoringSaving(true);
+    setMonitoringEnabled(next); // optimistic
+    try {
+      const res = await fetch(`/api/groups/${groupId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ monitoring_enabled: next }),
+      });
+      const json = (await res.json()) as { ok: boolean; error?: { message: string } };
+      if (!json.ok) {
+        setMonitoringEnabled(!next); // revert
+        errorToast({ title: 'Update failed', description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      successToast({ title: next ? 'Monitoring enabled' : 'Monitoring disabled' });
+      startTransition(() => { router.refresh(); });
+    } catch (e) {
+      setMonitoringEnabled(!next); // revert
+      errorToast({ title: 'Update failed', description: e instanceof Error ? e.message : 'Network error' });
+    } finally {
+      setMonitoringSaving(false);
     }
   }
 
@@ -467,6 +502,30 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
             >
               <Trash2 className="h-3.5 w-3.5" /> Delete group
             </Button>
+          </div>
+        </section>
+      )}
+
+      {/* Privacy — superadmin only */}
+      {isSuperadmin && (
+        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+          <h2 className="text-sm font-medium text-gray-800">Privacy</h2>
+          <div className="flex items-center justify-between">
+            <div className="pr-4">
+              <p className="text-sm text-gray-700">Domain monitoring</p>
+              <p className="text-xs text-gray-500">When off, per-device domain insights are hidden for this group&apos;s members.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={monitoringEnabled}
+              disabled={monitoringSaving || isPending}
+              onClick={() => { void handleToggleMonitoring(); }}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${monitoringEnabled ? 'bg-teal-700' : 'bg-gray-300'}`}
+              aria-label="Toggle domain monitoring"
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${monitoringEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
           </div>
         </section>
       )}

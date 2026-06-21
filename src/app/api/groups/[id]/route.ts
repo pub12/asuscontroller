@@ -23,6 +23,7 @@ const PatchGroupBody = z.object({
   color: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   image_file_id: z.string().nullable().optional(),
+  monitoring_enabled: z.boolean().optional(),
 });
 
 export const PATCH = withRequestContext(
@@ -43,13 +44,14 @@ export const PATCH = withRequestContext(
     const parsed = PatchGroupBody.safeParse(json);
     if (!parsed.success) return fail('VALIDATION_FAILED', 'Invalid request body');
 
-    const { name, type, color, description, image_file_id } = parsed.data;
+    const { name, type, color, description, image_file_id, monitoring_enabled } = parsed.data;
     const patch: Parameters<typeof updateGroup>[2] = {};
     if (name !== undefined) patch.name = name;
     if (type !== undefined) patch.type = type;
     if (color !== undefined) patch.color = color;
     if (description !== undefined) patch.description = description;
     if (image_file_id !== undefined) patch.imageFileId = image_file_id;
+    if (monitoring_enabled !== undefined) patch.monitoringEnabled = monitoring_enabled;
 
     const group = await updateGroup(getDb(), id, patch);
     if (!group) return fail('NOT_FOUND', 'Group not found');
