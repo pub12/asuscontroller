@@ -17,8 +17,10 @@
  *    @/ aliases and server-only).
  *
  * Mirrors blockService.ts writes exactly (app_block_state upserts, emitIntentEvent)
- * EXCEPT: hazo_state block:<id> marker is deliberately SKIPPED here — runDeviceSync
- * also skips it; it is not read by any worker path.
+ * EXCEPT: hazo_state block:<id> marker is deliberately SKIPPED here — this mirrors
+ * runDeviceSync, which also skips it. The marker is a UI optimistic-lock hint only
+ * (read by the web app to debounce rapid manual toggles); no worker path reads it,
+ * so writing it from the worker would be dead work.
  */
 
 import { emitIntentEvent, runWithAuditContext } from 'hazo_audit/server';

@@ -276,6 +276,8 @@ function QuickTimerDialog({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  // NOTE: this dialog only schedules the auto-reversal (unblock/re-block at runAt);
+  // the background worker (scripts/worker.mjs) must be running for it to fire.
   const blocked = !!device.is_blocked;
   const name = deviceDisplayName(device);
   const [preset, setPreset] = useState<number | 'custom'>(30);
@@ -718,6 +720,8 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
   }, []);
 
   useEffect(() => { void loadTimers(); }, [loadTimers]);
+  // Re-render every 30s so the live timer countdown badges stay current without
+  // re-fetching (the worker, not this tick, performs the actual block/unblock at runAt).
   useEffect(() => {
     const t = setInterval(() => setNowMs(Date.now()), 30_000);
     return () => clearInterval(t);

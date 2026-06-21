@@ -121,8 +121,11 @@ export async function unblockDevice(
   await runWithAuditContext(
     { actor_kind: 'user', actor_user_id: opts.actor.userId ?? null, actor_label: opts.actor.label },
     async () => {
-      // Early-unblock hook: if a jobs client is provided and there's a pending
-      // scheduled unblock job, cancel it so it doesn't fire after the manual unblock.
+      // Early-unblock cascade: when a device is manually unblocked while a timer
+      // is pending, undo the scheduled reversal so it can't fire later. This (1)
+      // cancels the pending hazo_jobs unblock job referenced by unblock_job_id and
+      // (2) marks the matching active app_schedules row 'cancelled'. Both steps are
+      // best-effort; the block-state pointers were already cleared in `row` above.
       if (opts.jobs && existing.unblock_job_id) {
         const unblockJobId = String(existing.unblock_job_id);
         try {

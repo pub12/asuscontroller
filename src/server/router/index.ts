@@ -16,11 +16,13 @@
  *   where no credentials are configured. The dynamic import ensures the
  *   real-router module is loaded ONLY when mode === 'asus'.
  *
- * Note for the sync worker (scripts/worker.mjs, a later phase):
- *   The plain-Node worker does NOT use this factory because plain Node cannot
- *   resolve the '@/' path alias used by getRouterProviderMode(). Instead, the
- *   worker imports FakeRouterProvider directly from the relative path. This is
- *   safe because ROUTER_PROVIDER stays 'fake' for the entire device-sync build.
+ * Cross-reference — the sync worker (scripts/worker.mjs):
+ *   The plain-Node worker re-implements this provider construction rather than
+ *   calling getRouterProvider(), because plain Node cannot resolve the '@/' path
+ *   alias (used by getRouterProviderMode) and needs explicit '.ts' extensions on
+ *   its relative dynamic imports, which this factory's extensionless import can't
+ *   provide. The worker honours the SAME ROUTER_PROVIDER modes (fake | asus) —
+ *   keep the two construction sites in sync.
  */
 
 import type { RouterProvider } from './RouterProvider';

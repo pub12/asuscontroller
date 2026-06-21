@@ -9,6 +9,13 @@
  *
  * Error convention: throws ScheduleServiceError with a typed code, mirroring
  * BlockServiceError. Callers wanting outcome types can wrap in try/catch.
+ *
+ * Tri-state invariant: a schedule's lifecycle is tracked across three places —
+ * app_schedules.status ('active' → 'done' when fired, or 'cancelled'), the
+ * underlying hazo_jobs row (pending → executed/cancelled), and (for device
+ * timers) the app_block_state.scheduled_unblock_at / unblock_job_id pointers.
+ * These are kept in sync here, but a manual block/unblock may race a pending
+ * job; the netwarden.* jobs are idempotent so a late fire is harmless.
  */
 import 'server-only';
 import type { HazoConnectAdapter } from 'hazo_connect/server';

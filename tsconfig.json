@@ -14,6 +14,7 @@
     "module": "esnext",
     "esModuleInterop": true,
     "moduleResolution": "bundler",
+    // Required by scripts/worker.mjs (Node type-stripping; relative `.ts` imports, no `@/` aliases).
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
