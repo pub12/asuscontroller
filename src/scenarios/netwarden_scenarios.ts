@@ -784,3 +784,29 @@ registerScenario('group_block', {
     },
   }],
 });
+
+registerScenario('notify', {
+  name: 'Notify — NotifyProvider ops-alerting seam',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'send, dedupe, swallow, noop-unconfigured checks all pass',
+    doc: {
+      description: 'Calls /api/notify-test which exercises the NotifyProvider with injected fake transports and clock. Verifies send fires, dedupeKey suppresses within window and re-fires after, no-dedupeKey always sends, errors are swallowed, and the unconfigured path is a no-op.',
+      inputs: 'GET /api/notify-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses injected fakes — zero real network calls. Robust whether or not TELEGRAM_* env vars are set.',
+    },
+    run: async () => {
+      const res = await fetch('/api/notify-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.sends_when_configured_ok, true);
+      assertEqual(b.dedupe_suppresses_ok, true);
+      assertEqual(b.no_dedupe_key_always_sends_ok, true);
+      assertEqual(b.swallows_send_errors_ok, true);
+      assertEqual(b.noop_unconfigured_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});

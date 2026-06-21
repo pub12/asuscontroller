@@ -172,6 +172,13 @@ const auditWorker = startAuditWorker({ app_adapter: auditAdapter });
 const { FakeRouterProvider } = await import('../src/server/router/FakeRouterProvider.ts');
 const { runDeviceSync } = await import('../src/server/sync/runDeviceSync.ts');
 
+// ---------------------------------------------------------------------------
+// Ops alerting (best-effort — Telegram-direct; no-op when TELEGRAM_* unset)
+// ---------------------------------------------------------------------------
+const { createNotifyProvider, isNotifyConfigured } = await import('../src/server/notify/NotifyProvider.ts');
+const notify = createNotifyProvider();
+console.log(`[worker] Ops alerting: ${isNotifyConfigured() ? 'enabled' : 'disabled (TELEGRAM_* unset)'}`);
+
 const provider = new FakeRouterProvider();
 
 // ---------------------------------------------------------------------------
@@ -206,7 +213,18 @@ const worker = createWorker({
 });
 
 const handler = async (job) => {
-  const summary = await runDeviceSync(adapter, provider, new Date().toISOString(), { intervalSec });
+  let summary;
+  try {
+    summary = await runDeviceSync(adapter, provider, new Date().toISOString(), { intervalSec });
+  } catch (err) {
+    // Best-effort ops alert — swallowed internally; rethrow so hazo_jobs records the failure.
+    await notify.alert({
+      title: '🔴 NetWarden sync failed',
+      body: String(err?.message ?? err),
+      dedupeKey: 'sync-failure',
+    });
+    throw err;
+  }
   console.log('[worker] netwarden.sync processed job', job.id, JSON.stringify(summary));
   try {
     const drained = await auditWorker.drainOnce();
