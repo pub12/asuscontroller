@@ -8,6 +8,7 @@ import { getJobsClientFor } from '@/server/schedules/jobsAdapter';
 import {
   listSchedules,
   createTimer,
+  createUnblockTimer,
   createFutureBlock,
   createRecurring,
   createWindow,
@@ -57,6 +58,15 @@ const TimerBody = z.object({
   label: z.string().optional(),
 });
 
+const UnblockTimerBody = z.object({
+  kind: z.literal('unblock_timer'),
+  targetType: TargetTypeEnum,
+  targetId: z.string().min(1),
+  durationMin: z.number().positive().optional(),
+  untilISO: z.string().min(1).optional(),
+  label: z.string().optional(),
+});
+
 const FutureBody = z.object({
   kind: z.literal('future'),
   targetType: TargetTypeEnum,
@@ -86,6 +96,7 @@ const WindowBody = z.object({
 
 const CreateBody = z.discriminatedUnion('kind', [
   TimerBody,
+  UnblockTimerBody,
   FutureBody,
   RecurringBody,
   WindowBody,
@@ -135,6 +146,18 @@ export const POST = withRequestContext(async (req: Request) => {
   try {
     if (body.kind === 'timer') {
       const schedule = await createTimer({
+        adapter, jobs, provider,
+        targetType, targetId,
+        durationMin: body.durationMin,
+        untilISO: body.untilISO,
+        label: body.label,
+        actor,
+      });
+      return ok({ schedule });
+    }
+
+    if (body.kind === 'unblock_timer') {
+      const schedule = await createUnblockTimer({
         adapter, jobs, provider,
         targetType, targetId,
         durationMin: body.durationMin,

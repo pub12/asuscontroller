@@ -8,6 +8,7 @@
  *
  * Flags:
  *   timer_ok           — createTimer blocks immediately + schedules unblock
+ *   unblock_timer_ok   — createUnblockTimer unblocks a blocked device now + schedules re-block
  *   future_block_ok    — createFutureBlock creates pending one-shot row, no immediate block
  *   fire_ok            — runScheduleFire fires a schedule, device blocked, row → 'done'
  *   recurring_ok       — createRecurring creates active cron row; listSchedules returns it
@@ -20,10 +21,10 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { FakeRouterProvider } from '@/server/router/FakeRouterProvider';
-import { createTimer, createFutureBlock, createRecurring, listSchedules } from '@/server/schedules/scheduleService';
+import { createTimer, createUnblockTimer, createFutureBlock, createRecurring, listSchedules } from '@/server/schedules/scheduleService';
 import { getJobsClientFor } from '@/server/schedules/jobsAdapter';
 import { runScheduleFire } from '@/server/schedules/runScheduleFire';
-import { unblockDevice } from '@/server/devices/blockService';
+import { blockDevice, unblockDevice } from '@/server/devices/blockService';
 import { authorizeCapability } from '@/server/permissions/authorize';
 import { createGrant } from '@/server/permissions/grantsService';
 
@@ -68,6 +69,9 @@ export async function GET() {
     });
     await createCrudService(adapter, 'app_devices').insert({
       id: 'd_offline', mac: 'AA:BB:CC:01:00:03', status: 'offline',
+    });
+    await createCrudService(adapter, 'app_devices').insert({
+      id: 'd_blocked', mac: 'AA:BB:CC:01:00:04', status: 'online',
     });
 
     // 4. Seed a group with one online member
@@ -279,6 +283,49 @@ export async function GET() {
     }
 
     // -------------------------------------------------------------------------
+    // unblock_timer_ok — createUnblockTimer: a currently-blocked device is
+    //   unblocked NOW and a future RE-BLOCK one-shot is scheduled.
+    //   Verify: device is unblocked now; schedule row action='block', run_at set,
+    //           cron=null, status='active'.
+    // -------------------------------------------------------------------------
+    let unblock_timer_ok = false;
+    {
+      // Block d_blocked first so there is something to temporarily lift.
+      await blockDevice(adapter, fake, 'd_blocked', { actor });
+      const preState = await (adapter as unknown as RawAdapter).rawQuery(
+        'SELECT is_blocked FROM app_block_state WHERE device_id = ?',
+        { params: ['d_blocked'] },
+      ) as { is_blocked: number }[];
+      const wasBlocked = preState.length > 0 && Number(preState[0].is_blocked) === 1;
+
+      const row = await createUnblockTimer({
+        adapter, jobs, provider: fake,
+        targetType: 'device', targetId: 'd_blocked',
+        durationMin: 60,
+        actor,
+      });
+
+      const rowStatus = row.status === 'active';
+      const rowAction = row.action === 'block';
+      const rowRunAt = row.run_at != null;
+      const rowCronNull = row.cron == null;
+      const rowJobId = row.job_id != null && row.job_id !== '';
+
+      // Device should be unblocked NOW.
+      const postState = await (adapter as unknown as RawAdapter).rawQuery(
+        'SELECT is_blocked FROM app_block_state WHERE device_id = ?',
+        { params: ['d_blocked'] },
+      ) as { is_blocked: number }[];
+      const nowUnblocked = postState.length > 0 && Number(postState[0].is_blocked) === 0;
+
+      debug.unblock_timer_row = { status: row.status, action: row.action, run_at: row.run_at, cron: row.cron, job_id: row.job_id };
+      debug.unblock_timer_pre = preState[0] ?? null;
+      debug.unblock_timer_post = postState[0] ?? null;
+
+      unblock_timer_ok = wasBlocked && rowStatus && rowAction && rowRunAt && rowCronNull && rowJobId && nowUnblocked;
+    }
+
+    // -------------------------------------------------------------------------
     // schedule_authz_ok — authorizeCapability enforces schedule.create
     //   - superadmin → allowed=true
     //   - non-superadmin with no grant → allowed=false
@@ -330,6 +377,7 @@ export async function GET() {
 
     const all_ok =
       timer_ok &&
+      unblock_timer_ok &&
       future_block_ok &&
       fire_ok &&
       recurring_ok &&
@@ -340,6 +388,7 @@ export async function GET() {
       ok: true,
       all_ok,
       timer_ok,
+      unblock_timer_ok,
       future_block_ok,
       fire_ok,
       recurring_ok,

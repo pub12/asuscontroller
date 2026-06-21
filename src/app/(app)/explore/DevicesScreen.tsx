@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useCallback, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
@@ -23,6 +23,8 @@ import {
   RefreshCw,
   MapPin,
   Plus,
+  Clock,
+  X,
 } from 'lucide-react';
 import {
   HazoUiTable,
@@ -82,6 +84,11 @@ interface RequestAccessState {
 }
 
 type Tab = 'devices' | 'groups';
+
+// Row shape passed to the table: DeviceRow plus a derived `displayName` so the
+// table's search/sort (which read row[key]) operate on the same name shown in
+// the Name column — including the hostname/mac fallback.
+type DeviceTableRow = DeviceRow & { displayName: string };
 
 interface EditState {
   device: DeviceRow;
@@ -160,6 +167,222 @@ function GroupBadge({ group }: { group: GroupRow | undefined }) {
       )}
       {group.name ?? ''}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Status filter chip (the device-counter labels double as filter buttons)
+// ---------------------------------------------------------------------------
+function FilterChip({
+  active,
+  onClick,
+  colorClass,
+  activeClass,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  colorClass: string;
+  activeClass: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium transition-colors ${colorClass} ${
+        active ? activeClass : 'hover:bg-gray-100'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Quick timer — "block for / unblock for a period"
+// ---------------------------------------------------------------------------
+
+/** An active one-shot schedule attached to a device, for the row countdown badge. */
+interface ActiveTimer {
+  id: string;
+  action: 'block' | 'unblock';
+  run_at: string;
+}
+
+// Duration quick-picks (minutes) for the row timer.
+const QUICK_DURATIONS = [
+  { label: '10m', min: 10 },
+  { label: '30m', min: 30 },
+  { label: '1h', min: 60 },
+  { label: '2h', min: 120 },
+] as const;
+
+function durationLabel(min: number): string {
+  if (min < 60) return `${min}m`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
+
+/** Time remaining until an ISO instant, as a compact label. */
+function formatLeft(runAtISO: string, nowMs: number): string {
+  const ms = new Date(runAtISO).getTime() - nowMs;
+  if (ms <= 0) return 'now';
+  const totalMin = Math.max(1, Math.round(ms / 60000));
+  return durationLabel(totalMin);
+}
+
+// ---------------------------------------------------------------------------
+// Active-timer badge (countdown + cancel) shown on a device row
+// ---------------------------------------------------------------------------
+function TimerBadge({
+  timer,
+  nowMs,
+  onCancel,
+}: {
+  timer: ActiveTimer;
+  nowMs: number;
+  onCancel: () => void;
+}) {
+  // action is what happens WHEN the timer fires.
+  const verb = timer.action === 'block' ? 'blocks' : 'unblocks';
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+      <Clock className="h-3 w-3" />
+      {verb} in {formatLeft(timer.run_at, nowMs)}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onCancel(); }}
+        className="-mr-0.5 ml-0.5 rounded-full p-0.5 hover:bg-amber-200"
+        aria-label="Cancel timer"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Quick timer dialog — direction depends on the device's current block state
+// ---------------------------------------------------------------------------
+function QuickTimerDialog({
+  device,
+  onClose,
+  onCreated,
+}: {
+  device: DeviceRow;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const blocked = !!device.is_blocked;
+  const name = deviceDisplayName(device);
+  const [preset, setPreset] = useState<number | 'custom'>(30);
+  const [customMin, setCustomMin] = useState('45');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    const mins = preset === 'custom' ? parseInt(customMin, 10) : preset;
+    if (!mins || mins <= 0) {
+      errorToast({ title: 'Invalid duration', description: 'Enter a positive number of minutes.' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: blocked ? 'unblock_timer' : 'timer',
+          targetType: 'device',
+          targetId: device.id,
+          durationMin: mins,
+        }),
+      });
+      const json = (await res.json()) as { ok: boolean; error?: { message: string } };
+      if (!json.ok) {
+        errorToast({ title: 'Timer failed', description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      successToast({
+        title: blocked ? `Unblocked for ${durationLabel(mins)}` : `Blocked for ${durationLabel(mins)}`,
+        description: blocked
+          ? `Auto re-blocks in ${durationLabel(mins)}`
+          : `Auto-unblocks in ${durationLabel(mins)}`,
+      });
+      onCreated();
+      onClose();
+    } catch (e) {
+      errorToast({ title: 'Timer failed', description: e instanceof Error ? e.message : 'Network error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <HazoUiDialog
+      open
+      onOpenChange={(o) => { if (!o) onClose(); }}
+      title={blocked ? `Unblock ${name} for…` : `Block ${name} for…`}
+      actionButtonText={blocked ? 'Unblock' : 'Block'}
+      actionButtonLoading={submitting}
+      cancelButtonText="Cancel"
+      showCancelButton
+      onConfirm={() => { void submit(); }}
+      onCancel={onClose}
+      sizeWidth="420px"
+    >
+      <div className="space-y-4 p-4">
+        <p className="text-sm text-gray-600">
+          {blocked
+            ? 'Unblocks now and automatically re-blocks after the selected time.'
+            : 'Blocks now and automatically unblocks after the selected time.'}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {QUICK_DURATIONS.map(({ label, min }) => {
+            const active = preset === min;
+            return (
+              <button
+                key={min}
+                type="button"
+                onClick={() => setPreset(min)}
+                className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                  active
+                    ? 'border-teal-700 bg-teal-700 text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-teal-600 hover:text-teal-700'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setPreset('custom')}
+            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+              preset === 'custom'
+                ? 'border-teal-700 bg-teal-700 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-teal-600 hover:text-teal-700'
+            }`}
+          >
+            Custom
+          </button>
+        </div>
+        {preset === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={1}
+              value={customMin}
+              onChange={(e) => setCustomMin(e.target.value)}
+              className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            />
+            <span className="text-sm text-gray-500">minutes</span>
+          </div>
+        )}
+      </div>
+    </HazoUiDialog>
   );
 }
 
@@ -460,11 +683,89 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
   const [confirmBlock, setConfirmBlock] = useState<DeviceRow | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [requestAccess, setRequestAccess] = useState<RequestAccessState | null>(null);
+  const [timerDevice, setTimerDevice] = useState<DeviceRow | null>(null);
+
+  // Active one-shot timers per device id (for the row countdown badge).
+  const [deviceTimers, setDeviceTimers] = useState<Map<string, ActiveTimer>>(new Map());
+  // Ticking "now" so countdown labels stay roughly fresh without a refetch.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const loadTimers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/schedules?targetType=device');
+      const json = (await res.json()) as {
+        ok: boolean;
+        data?: { timers?: ActiveTimer[]; upcoming?: ActiveTimer[] };
+      };
+      if (!json.ok || !json.data) return;
+      const rows = [...(json.data.timers ?? []), ...(json.data.upcoming ?? [])] as Array<
+        ActiveTimer & { status?: string; target_id?: string }
+      >;
+      const map = new Map<string, ActiveTimer>();
+      for (const r of rows) {
+        const targetId = r.target_id;
+        if (!targetId || !r.run_at || r.status !== 'active') continue;
+        const cur = map.get(targetId);
+        // Keep the soonest-firing one-shot per device.
+        if (!cur || new Date(r.run_at) < new Date(cur.run_at)) {
+          map.set(targetId, { id: r.id, action: r.action, run_at: r.run_at });
+        }
+      }
+      setDeviceTimers(map);
+    } catch {
+      /* best-effort — leave existing badges as-is on a transient failure */
+    }
+  }, []);
+
+  useEffect(() => { void loadTimers(); }, [loadTimers]);
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+
+  async function handleCancelTimer(timer: ActiveTimer) {
+    try {
+      const res = await fetch(`/api/schedules/${timer.id}`, { method: 'DELETE' });
+      const json = (await res.json()) as { ok: boolean; error?: { message: string } };
+      if (!json.ok) {
+        errorToast({ title: 'Cancel failed', description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      successToast({ title: 'Timer cancelled' });
+      await loadTimers();
+      startTransition(() => { router.refresh(); });
+    } catch (e) {
+      errorToast({ title: 'Cancel failed', description: e instanceof Error ? e.message : 'Network error' });
+    }
+  }
 
   // Counts for the header summary.
   const total = devices.length;
   const onlineCount = devices.filter((d) => d.status === 'online').length;
   const blockedCount = devices.filter((d) => !!d.is_blocked).length;
+
+  // Status filter — the counter labels double as filter buttons.
+  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline' | 'blocked'>('all');
+  // If the blocked filter is active but nothing is blocked anymore (e.g. after an
+  // unblock + refresh), fall back to "all" so the table doesn't show an empty view.
+  const effectiveFilter = statusFilter === 'blocked' && blockedCount === 0 ? 'all' : statusFilter;
+  const filteredDevices = devices.filter((d) => {
+    if (effectiveFilter === 'online') return d.status === 'online';
+    if (effectiveFilter === 'offline') return d.status !== 'online';
+    if (effectiveFilter === 'blocked') return !!d.is_blocked;
+    return true;
+  });
+  // The table searches/sorts on `row[key]`, so surface the *resolved* display
+  // name (friendly_name → hostname → mac) as its own field. Without this, search
+  // only matched friendly_name and missed devices shown via the hostname/mac
+  // fallback (e.g. "Google home - kitchen" with an empty friendly_name).
+  const tableRows: DeviceTableRow[] = filteredDevices.map((d) => ({
+    ...d,
+    displayName: deviceDisplayName(d),
+  }));
+  // Clicking an active (non-"all") chip toggles it back off.
+  const toggleFilter = (f: 'online' | 'offline' | 'blocked') =>
+    setStatusFilter((cur) => (cur === f ? 'all' : f));
 
   // ------------------------------------------------------------------
   // Refresh: re-sync devices AND pull live block state from the router.
@@ -487,6 +788,7 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
       const s = json.data?.summary;
       const extra = s?.block_pulled ? ` · ${s.block_pulled} block change(s)` : '';
       successToast({ title: 'Refreshed from router', description: s ? `${s.seen} device(s) seen${extra}` : undefined });
+      void loadTimers();
       startTransition(() => { router.refresh(); });
     } catch (e) {
       errorToast({ title: 'Refresh failed', description: e instanceof Error ? e.message : 'Network error' });
@@ -566,6 +868,7 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
         return;
       }
       successToast({ title: blocking ? 'Device blocked' : 'Device unblocked' });
+      void loadTimers();
       startTransition(() => { router.refresh(); });
     } catch (e) {
       errorToast({ title: blocking ? 'Block failed' : 'Unblock failed', description: e instanceof Error ? e.message : 'Network error' });
@@ -588,9 +891,9 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
   // ------------------------------------------------------------------
   // Columns
   // ------------------------------------------------------------------
-  const columns: TableColumn<DeviceRow>[] = [
+  const columns: TableColumn<DeviceTableRow>[] = [
     {
-      key: 'friendly_name',
+      key: 'displayName',
       label: 'Name',
       sortable: true,
       searchable: true,
@@ -602,6 +905,13 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
             <span className="font-medium text-gray-800">{deviceDisplayName(d)}</span>
             {currentDeviceId && d.id === currentDeviceId && <ThisDeviceBadge />}
             {!!d.is_blocked && <BlockedBadge />}
+            {deviceTimers.get(d.id ?? '') && (
+              <TimerBadge
+                timer={deviceTimers.get(d.id ?? '')!}
+                nowMs={nowMs}
+                onCancel={() => void handleCancelTimer(deviceTimers.get(d.id ?? '')!)}
+              />
+            )}
           </span>
         );
       },
@@ -642,6 +952,19 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
             >
               New
             </button>
+          )}
+          {isSuperadmin && !deviceTimers.get(d.id ?? '') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isPending}
+              onClick={(e) => { e.stopPropagation(); setTimerDevice(d); }}
+              className="h-7 w-7 p-0"
+              aria-label={d.is_blocked ? 'Unblock for a period' : 'Block for a period'}
+              title={d.is_blocked ? 'Unblock for a period' : 'Block for a period'}
+            >
+              <Clock className="h-3.5 w-3.5" />
+            </Button>
           )}
           {isSuperadmin && (
             d.is_blocked ? (
@@ -728,40 +1051,66 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
         />
       ) : (
         <div className="rounded-lg border border-gray-200">
-          {/* Device counter */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-gray-100 px-4 py-2.5 text-sm">
-            <span className="font-medium text-gray-800">
+          {/* Device counter — labels double as status filters */}
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-gray-100 px-3 py-2">
+            <FilterChip
+              active={effectiveFilter === 'all'}
+              onClick={() => setStatusFilter('all')}
+              colorClass="text-gray-800"
+              activeClass="bg-gray-200 text-gray-900"
+            >
               {total} {total === 1 ? 'device' : 'devices'}
-            </span>
-            <span className="text-gray-400">·</span>
-            <span className="inline-flex items-center gap-1 text-green-700">
+            </FilterChip>
+            <FilterChip
+              active={effectiveFilter === 'online'}
+              onClick={() => toggleFilter('online')}
+              colorClass="text-green-700"
+              activeClass="bg-green-100"
+            >
               <Wifi className="h-3.5 w-3.5" />
               {onlineCount} online
-            </span>
-            <span className="inline-flex items-center gap-1 text-gray-500">
+            </FilterChip>
+            <FilterChip
+              active={effectiveFilter === 'offline'}
+              onClick={() => toggleFilter('offline')}
+              colorClass="text-gray-500"
+              activeClass="bg-gray-200 text-gray-700"
+            >
               <WifiOff className="h-3.5 w-3.5" />
               {total - onlineCount} offline
-            </span>
+            </FilterChip>
             {blockedCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-red-600">
+              <FilterChip
+                active={effectiveFilter === 'blocked'}
+                onClick={() => toggleFilter('blocked')}
+                colorClass="text-red-600"
+                activeClass="bg-red-100"
+              >
                 <Ban className="h-3.5 w-3.5" />
                 {blockedCount} blocked
-              </span>
+              </FilterChip>
             )}
           </div>
-          <HazoUiTable<DeviceRow>
+          <HazoUiTable<DeviceTableRow>
             columns={columns}
-            rows={devices}
+            rows={tableRows}
             getRowKey={(d) => d.id ?? ''}
             enableSearch
             searchPlaceholder="Search devices…"
             loading={isPending}
             onRowClick={(d) => router.push(`/explore/${d.id}`)}
             empty={
-              <EmptyState
-                title="No devices yet"
-                description="Run a sync or start the worker."
-              />
+              effectiveFilter === 'all' ? (
+                <EmptyState
+                  title="No devices yet"
+                  description="Run a sync or start the worker."
+                />
+              ) : (
+                <EmptyState
+                  title={`No ${effectiveFilter} devices`}
+                  description="Try a different filter or clear it to see all devices."
+                />
+              )
             }
             mobileCardFallback
           />
@@ -775,6 +1124,18 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
           groups={groups}
           onClose={() => setEditState(null)}
           onSaved={() => startTransition(() => { router.refresh(); })}
+        />
+      )}
+
+      {/* Quick timer dialog — block-for / unblock-for a period */}
+      {timerDevice && (
+        <QuickTimerDialog
+          device={timerDevice}
+          onClose={() => setTimerDevice(null)}
+          onCreated={() => {
+            void loadTimers();
+            startTransition(() => { router.refresh(); });
+          }}
         />
       )}
 

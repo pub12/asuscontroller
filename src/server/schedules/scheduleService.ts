@@ -174,6 +174,74 @@ export async function createTimer(opts: {
 }
 
 // ---------------------------------------------------------------------------
+// createUnblockTimer
+//
+// The mirror of createTimer: UNBLOCK a device/group NOW, then schedule an
+// automatic RE-BLOCK at runAt (a temporary reprieve — "unblock the laptop for
+// 1 hour"). Either durationMin or untilISO is required.
+// ---------------------------------------------------------------------------
+
+export async function createUnblockTimer(opts: {
+  adapter: HazoConnectAdapter;
+  jobs: JobsClient;
+  provider: RouterProvider;
+  targetType: 'device' | 'group';
+  targetId: string;
+  durationMin?: number;
+  untilISO?: string;
+  label?: string;
+  actor: ScheduleActor;
+}): Promise<ScheduleRow> {
+  const { adapter, jobs, provider, targetType, targetId, label, actor } = opts;
+
+  if (opts.durationMin == null && opts.untilISO == null) {
+    throw new ScheduleServiceError('VALIDATION_FAILED', 'Either durationMin or untilISO is required for an unblock timer');
+  }
+
+  const runAt = opts.durationMin != null
+    ? durationToISO(opts.durationMin)
+    : opts.untilISO!;
+
+  // Unblock immediately.
+  const gate = { authorized: true, actorLabel: actor.label, actorUserId: actor.userId ?? null };
+  if (targetType === 'device') {
+    await runBlockAction(adapter, provider, gate, targetId, 'unblock');
+  } else {
+    await runGroupBlockAction(adapter, provider, gate, targetId, 'unblock');
+  }
+
+  const scheduleId = schedId();
+  const payload: ScheduleJobPayload = { targetType, targetId, action: 'block', scheduleId };
+
+  const { jobId } = await jobs.submit({
+    type: 'netwarden.block',
+    description: 'scheduled re-block ' + targetId,
+    payload,
+    runAt,
+    maxAttempts: 1,
+  });
+
+  const now = new Date().toISOString();
+  const row: ScheduleRow = {
+    id: scheduleId,
+    target_type: targetType,
+    target_id: targetId,
+    action: 'block',
+    run_at: runAt,
+    cron: null,
+    job_id: jobId,
+    status: 'active',
+    created_by: actor.userId ?? null,
+    created_at: now,
+    label: label ?? null,
+    window_id: null,
+  };
+
+  await scheduleSvc(adapter).insert(row);
+  return row;
+}
+
+// ---------------------------------------------------------------------------
 // createFutureBlock
 //
 // Schedule a block or unblock at a future ISO instant (no immediate action).
