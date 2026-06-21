@@ -8,7 +8,7 @@
  */
 
 import { createNotifyProvider } from '@/server/notify/NotifyProvider';
-import { notifyDeviceBlock, notifyGroupBlockAll, notifyNewDevices } from '@/server/notify/events';
+import { notifyDeviceBlock, notifyGroupBlockAll, notifyNewDevices, notifyScheduleFired } from '@/server/notify/events';
 
 export async function GET() {
   if (process.env.NODE_ENV === 'production') {
@@ -124,6 +124,27 @@ export async function GET() {
       unconfigured_noop_ok = !threw;
     }
 
+    // -------------------------------------------------------------------------
+    // Check 8: notify_schedule_fired_ok
+    // notifyScheduleFired(block) → send containing 'blocked' and targetId
+    // -------------------------------------------------------------------------
+    let notify_schedule_fired_ok = false;
+    {
+      const calls: string[] = [];
+      const provider = createNotifyProvider({ send: async (text) => { calls.push(text); } });
+      await notifyScheduleFired(provider, {
+        action: 'block',
+        targetType: 'device',
+        targetId: 'dev_x',
+        affected: 1,
+      });
+      notify_schedule_fired_ok =
+        calls.length === 1 &&
+        calls[0].includes('blocked') &&
+        calls[0].includes('dev_x') &&
+        calls[0].includes('1');
+    }
+
     const all_ok =
       device_block_alerts_ok &&
       device_unblock_alerts_ok &&
@@ -131,7 +152,8 @@ export async function GET() {
       new_devices_alerts_ok &&
       new_devices_zero_noop_ok &&
       escapes_label_ok &&
-      unconfigured_noop_ok;
+      unconfigured_noop_ok &&
+      notify_schedule_fired_ok;
 
     return Response.json({
       ok: true,
@@ -143,6 +165,7 @@ export async function GET() {
       new_devices_zero_noop_ok,
       escapes_label_ok,
       unconfigured_noop_ok,
+      notify_schedule_fired_ok,
     });
   } catch (err) {
     return Response.json({ ok: false, error: String(err) }, { status: 500 });

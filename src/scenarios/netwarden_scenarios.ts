@@ -789,11 +789,11 @@ registerScenario('notify-events', {
   name: 'Notify Events — domain-event alert mapping helpers',
   pkg: 'netwarden',
   cases: [{
-    name: 'device_block, device_unblock, group_block_all, new_devices, zero_noop, escape, unconfigured all pass',
+    name: 'device_block, device_unblock, group_block_all, new_devices, zero_noop, escape, unconfigured, schedule_fired all pass',
     doc: {
-      description: 'Calls /api/notify-events-test which exercises notifyDeviceBlock, notifyGroupBlockAll, and notifyNewDevices against recording fake providers. Verifies alert content, zero-count no-op, HTML escaping, and unconfigured no-op.',
+      description: 'Calls /api/notify-events-test which exercises notifyDeviceBlock, notifyGroupBlockAll, notifyNewDevices, and notifyScheduleFired against recording fake providers. Verifies alert content, zero-count no-op, HTML escaping, unconfigured no-op, and schedule-fired alert shape.',
       inputs: 'GET /api/notify-events-test — no auth required (test-only route).',
-      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true including notify_schedule_fired_ok.',
       caveats: 'Uses injected fakes — zero real network calls. Real Telegram delivery is NOT smoke-tested (no token required).',
     },
     run: async () => {
@@ -808,7 +808,178 @@ registerScenario('notify-events', {
       assertEqual(b.new_devices_zero_noop_ok, true);
       assertEqual(b.escapes_label_ok, true);
       assertEqual(b.unconfigured_noop_ok, true);
+      assertEqual(b.notify_schedule_fired_ok, true);
       assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
+/**
+ * schedule_timer — createTimer blocks immediately + schedules an unblock.
+ */
+registerScenario('schedule_timer', {
+  name: 'Schedules — createTimer blocks now + schedules unblock',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/schedules-test → timer_ok true',
+    doc: {
+      description: [
+        'Calls /api/schedules-test which spins up a throwaway temp SQLite DB and exercises',
+        'the schedules service. Asserts timer_ok: createTimer creates an active one-shot row',
+        '(status=active, run_at set, cron=null, job_id set) AND immediately blocks the device',
+        '(app_block_state.is_blocked=1, unblock_job_id set in app_block_state).',
+      ].join(' '),
+      inputs: 'GET /api/schedules-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; timer_ok true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/schedules-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.timer_ok, true);
+    },
+  }],
+});
+
+/**
+ * schedule_future_block — createFutureBlock creates a pending one-shot row without blocking now.
+ */
+registerScenario('schedule_future_block', {
+  name: 'Schedules — createFutureBlock pending one-shot, no immediate action',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/schedules-test → future_block_ok true',
+    doc: {
+      description: [
+        'Calls /api/schedules-test and asserts future_block_ok: createFutureBlock creates an',
+        'active one-shot row (status=active, run_at=future, cron=null, job_id set) and the',
+        'target device is NOT blocked immediately (no app_block_state row with is_blocked=1).',
+      ].join(' '),
+      inputs: 'GET /api/schedules-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; future_block_ok true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/schedules-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.future_block_ok, true);
+    },
+  }],
+});
+
+/**
+ * schedule_fire — runScheduleFire fires a one-shot schedule: device blocked, row → 'done'.
+ */
+registerScenario('schedule_fire', {
+  name: 'Schedules — runScheduleFire fires schedule, device blocked, row done',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/schedules-test → fire_ok true',
+    doc: {
+      description: [
+        'Calls /api/schedules-test and asserts fire_ok: runScheduleFire called directly on',
+        'the future_block schedule → result.affected includes the device, app_block_state.is_blocked=1,',
+        'and the one-shot schedule row flips to status=done.',
+      ].join(' '),
+      inputs: 'GET /api/schedules-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; fire_ok true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/schedules-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.fire_ok, true);
+    },
+  }],
+});
+
+/**
+ * schedule_recurring — createRecurring creates an active cron row; listSchedules returns it.
+ */
+registerScenario('schedule_recurring', {
+  name: 'Schedules — createRecurring active cron row; listSchedules returns it',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/schedules-test → recurring_ok true',
+    doc: {
+      description: [
+        'Calls /api/schedules-test and asserts recurring_ok: createRecurring creates an active',
+        'row (status=active, cron set, run_at=null, job_id set); listSchedules returns it',
+        'under the recurring list.',
+      ].join(' '),
+      inputs: 'GET /api/schedules-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; recurring_ok true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/schedules-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.recurring_ok, true);
+    },
+  }],
+});
+
+/**
+ * schedule_early_unblock — manual unblockDevice with jobs cancels pending unblock job + schedule row.
+ */
+registerScenario('schedule_early_unblock', {
+  name: 'Schedules — early unblock cancels pending job + schedule row',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/schedules-test → early_unblock_ok true',
+    doc: {
+      description: [
+        'Calls /api/schedules-test and asserts early_unblock_ok: after createTimer (device blocked',
+        'now + unblock job scheduled), calling unblockDevice with { jobs } causes the pending',
+        'unblock job to be cancelled (via jobs.cancel) AND the matching app_schedules row to be',
+        "marked 'cancelled', and the device is unblocked.",
+      ].join(' '),
+      inputs: 'GET /api/schedules-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; early_unblock_ok true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/schedules-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.early_unblock_ok, true);
+    },
+  }],
+});
+
+/**
+ * schedule_authz — authorizeCapability enforces schedule.create for superadmin and non-superadmin.
+ */
+registerScenario('schedule_authz', {
+  name: 'Schedules — authorizeCapability enforces schedule.create',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/schedules-test → schedule_authz_ok true',
+    doc: {
+      description: [
+        'Calls /api/schedules-test and asserts schedule_authz_ok: authorizeCapability with',
+        'isSuperadmin:true → allowed=true (reason=superadmin); isSuperadmin:false + no grant',
+        '→ allowed=false; isSuperadmin:false + global schedule.create grant → allowed=true.',
+      ].join(' '),
+      inputs: 'GET /api/schedules-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; schedule_authz_ok true.',
+      caveats: 'Uses a throwaway temp SQLite DB. Zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/schedules-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.schedule_authz_ok, true);
     },
   }],
 });
