@@ -464,6 +464,44 @@ registerScenario('devices_list', {
   }],
 });
 
+registerScenario('device_activity', {
+  name: 'Device Detail — getDeviceActivity presence + audit timeline',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/device-activity-test → presence aggregation + merged event/field timeline',
+    doc: {
+      description: [
+        'Calls /api/device-activity-test which spins up a throwaway temp SQLite DB, inserts',
+        'device d1, runs blockDevice then unblockDevice (real audit intent rows), drains the',
+        'audit outbox (producing hazo_audit_field diff rows), seeds app_device_presence',
+        '(today=120 min, an earlier day=60 min), then calls getDeviceActivity and asserts:',
+        '(presence_today_ok) todayMinutes===120; (presence_all_ok) allTimeMinutes===180;',
+        '(timeline_event_ok) both device_blocked and device_unblocked events present;',
+        '(timeline_field_ok) at least one kind:field item after the drain;',
+        '(sorted_ok) timeline occurred_at is non-increasing.',
+      ].join(' '),
+      inputs: 'GET /api/device-activity-test — no auth required (test-only route).',
+      expectedOutputs: [
+        'HTTP 200; ok true; all_ok true; presence_today_ok, presence_all_ok,',
+        'timeline_event_ok, timeline_field_ok, sorted_ok all true.',
+      ].join(' '),
+      caveats: 'Uses a throwaway temp DB; FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/device-activity-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.presence_today_ok, true);
+      assertEqual(b.presence_all_ok, true);
+      assertEqual(b.timeline_event_ok, true);
+      assertEqual(b.timeline_field_ok, true);
+      assertEqual(b.sorted_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',
