@@ -15,7 +15,18 @@ export async function middleware(request: NextRequest) {
 /**
  * Protect only named human app pages.
  * Explicitly excludes /login, /hazo_auth/*, /autotest, /api/*, /_next/*, static assets.
+ * `/explore/:path*` covers dynamic subroutes (device detail, group detail, group
+ * create) — exact-path matchers alone would leave those unauthenticated.
  */
 export const config = {
-  matcher: ['/', '/explore', '/schedules', '/analytics', '/admin', '/settings'],
+  matcher: [
+    '/',
+    '/explore',
+    '/explore/:path*',
+    '/schedules',
+    '/analytics',
+    '/admin',
+    '/admin/:path*',
+    '/settings',
+  ],
 };

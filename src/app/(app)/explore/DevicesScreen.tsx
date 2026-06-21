@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
   Laptop,
@@ -21,6 +22,7 @@ import {
   ShieldCheck,
   RefreshCw,
   MapPin,
+  Plus,
 } from 'lucide-react';
 import {
   HazoUiTable,
@@ -39,6 +41,7 @@ import {
   errorToast,
 } from 'hazo_ui';
 import type { DeviceRow, GroupRow } from '@/server/devices/deviceService';
+import type { GroupSummary } from '@/server/groups/groupService';
 
 // ---------------------------------------------------------------------------
 // Icon map
@@ -67,9 +70,15 @@ const NONE_GROUP = '__none__';
 interface Props {
   devices: DeviceRow[];
   groups: GroupRow[];
+  groupSummaries: GroupSummary[];
   isSuperadmin: boolean;
   /** id of the device matching the viewer's IP, if any — gets a "This device" tag. */
   currentDeviceId?: string | null;
+}
+
+interface RequestAccessState {
+  groupId: string;
+  capability: string;
 }
 
 type Tab = 'devices' | 'groups';
@@ -273,51 +282,184 @@ function EditDialog({
 }
 
 // ---------------------------------------------------------------------------
-// Groups list (read-only)
+// Groups grid card
 // ---------------------------------------------------------------------------
-function GroupsList({ groups }: { groups: GroupRow[] }) {
-  if (groups.length === 0) {
+function GroupCard({
+  group,
+  onBlock,
+}: {
+  group: GroupSummary;
+  onBlock: (group: GroupSummary, action: 'block' | 'unblock') => void;
+}) {
+  const initial = (group.name ?? '?').charAt(0).toUpperCase();
+
+  return (
+    <div className="relative flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      {/* Clickable area → group detail */}
+      <Link href={`/explore/groups/${group.id ?? ''}`} className="flex flex-col items-center gap-2 p-4 pb-2 flex-1">
+        {/* Avatar */}
+        {group.image_file_id ? (
+          <img
+            src={`/api/groups/image/${group.image_file_id}?variant=thumb`}
+            className="h-14 w-14 rounded-full object-cover"
+            alt=""
+          />
+        ) : (
+          <span
+            className="flex h-14 w-14 items-center justify-center rounded-full text-xl font-bold text-white"
+            style={{ background: group.color ?? '#64748b' }}
+          >
+            {initial}
+          </span>
+        )}
+
+        {/* Name */}
+        <span className="text-sm font-medium text-gray-900 text-center leading-tight">
+          {group.name ?? group.id}
+        </span>
+
+        {/* Online count */}
+        <span className="text-xs text-gray-500">
+          {group.onlineCount} of {group.memberCount} online
+        </span>
+
+        {/* Blocked pill */}
+        {group.isBlocked && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <Ban className="h-3 w-3" />
+            Blocked
+          </span>
+        )}
+      </Link>
+
+      {/* Block/Unblock button */}
+      <div className="px-3 pb-3">
+        <button
+          onClick={() => onBlock(group, group.isBlocked ? 'unblock' : 'block')}
+          className={`w-full rounded-lg py-2 text-sm font-medium transition-colors ${
+            group.isBlocked
+              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              : 'bg-teal-700 text-white hover:bg-teal-800'
+          }`}
+        >
+          {group.isBlocked ? 'Unblock all' : 'Block all'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Groups grid
+// ---------------------------------------------------------------------------
+function GroupsGrid({
+  groupSummaries,
+  onBlock,
+}: {
+  groupSummaries: GroupSummary[];
+  onBlock: (group: GroupSummary, action: 'block' | 'unblock') => void;
+}) {
+  if (groupSummaries.length === 0) {
     return (
       <div className="rounded-lg border border-gray-200 p-6">
         <EmptyState title="No groups yet" description="Create groups to organise your devices." />
       </div>
     );
   }
+
   return (
-    <ul className="space-y-2">
-      {groups.map((g) => (
-        <li
-          key={g.id}
-          className="flex items-start gap-3 rounded-lg border border-gray-200 p-3"
-        >
-          {g.color && (
-            <span
-              className="mt-0.5 h-4 w-4 flex-shrink-0 rounded-full"
-              style={{ background: g.color }}
-            />
-          )}
-          <div>
-            <p className="text-sm font-medium text-gray-800">{g.name ?? g.id}</p>
-            {g.description && (
-              <p className="mt-0.5 text-xs text-gray-500">{g.description}</p>
-            )}
-          </div>
-        </li>
+    <div className="grid grid-cols-2 gap-3">
+      {groupSummaries.map((g) => (
+        <GroupCard key={g.id} group={g} onBlock={onBlock} />
       ))}
-    </ul>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Request access dialog
+// ---------------------------------------------------------------------------
+function RequestAccessDialog({
+  state,
+  onClose,
+}: {
+  state: RequestAccessState | null;
+  onClose: () => void;
+}) {
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit() {
+    if (!state) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          capability: state.capability,
+          scope_type: 'group',
+          scope_id: state.groupId,
+          note: note.trim() || undefined,
+        }),
+      });
+      const json = (await res.json()) as { ok: boolean; error?: { message: string } };
+      if (!json.ok) {
+        errorToast({ title: 'Request failed', description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      successToast({ title: 'Request submitted — a superadmin will review it' });
+      setNote('');
+      onClose();
+    } catch (e) {
+      errorToast({ title: 'Request failed', description: e instanceof Error ? e.message : 'Network error' });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <HazoUiDialog
+      open={state !== null}
+      onOpenChange={(o) => { if (!o) onClose(); }}
+      title="Request access"
+      actionButtonText="Submit request"
+      actionButtonLoading={submitting}
+      cancelButtonText="Cancel"
+      showCancelButton
+      onConfirm={() => { void handleSubmit(); }}
+      onCancel={onClose}
+      sizeWidth="420px"
+    >
+      <div className="space-y-4 p-4">
+        <p className="text-sm text-gray-600">
+          You don&apos;t have permission to {state?.capability === 'group.block' ? 'block' : 'unblock'} this group.
+          Submit a request and a superadmin will review it.
+        </p>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</label>
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Why do you need this access?"
+          />
+        </div>
+      </div>
+    </HazoUiDialog>
   );
 }
 
 // ---------------------------------------------------------------------------
 // DevicesScreen
 // ---------------------------------------------------------------------------
-export function DevicesScreen({ devices, groups, isSuperadmin, currentDeviceId }: Props) {
+export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, currentDeviceId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<Tab>('devices');
   const [editState, setEditState] = useState<EditState | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<DeviceRow | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [requestAccess, setRequestAccess] = useState<RequestAccessState | null>(null);
 
   // Counts for the header summary.
   const total = devices.length;
@@ -350,6 +492,41 @@ export function DevicesScreen({ devices, groups, isSuperadmin, currentDeviceId }
       errorToast({ title: 'Refresh failed', description: e instanceof Error ? e.message : 'Network error' });
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Block / unblock a group (capability-gated)
+  // ------------------------------------------------------------------
+  async function handleGroupBlock(group: GroupSummary, action: 'block' | 'unblock') {
+    const groupId = group.id ?? '';
+    try {
+      const res = await fetch(`/api/groups/${groupId}/${action}`, { method: 'POST' });
+      const json = (await res.json()) as {
+        ok: boolean;
+        error?: { message: string; code?: string };
+        memberCount?: number;
+        affected?: string[];
+        skippedOffline?: string[];
+      };
+      if (!json.ok) {
+        if (json.error?.code === 'FORBIDDEN' || res.status === 403) {
+          setRequestAccess({
+            groupId,
+            capability: action === 'block' ? 'group.block' : 'group.unblock',
+          });
+          return;
+        }
+        errorToast({ title: `${action === 'block' ? 'Block' : 'Unblock'} failed`, description: json.error?.message ?? 'Unknown error' });
+        return;
+      }
+      const affected = json.affected?.length ?? 0;
+      const skipped = json.skippedOffline?.length ?? 0;
+      const desc = skipped > 0 ? `${action === 'block' ? 'Blocked' : 'Unblocked'} ${affected} · ${skipped} offline skipped` : undefined;
+      successToast({ title: action === 'block' ? 'Group blocked' : 'Group unblocked', description: desc });
+      startTransition(() => { router.refresh(); });
+    } catch (e) {
+      errorToast({ title: `${action === 'block' ? 'Block' : 'Unblock'} failed`, description: e instanceof Error ? e.message : 'Network error' });
     }
   }
 
@@ -545,7 +722,10 @@ export function DevicesScreen({ devices, groups, isSuperadmin, currentDeviceId }
 
       {/* Tab content */}
       {tab === 'groups' ? (
-        <GroupsList groups={groups} />
+        <GroupsGrid
+          groupSummaries={groupSummaries}
+          onBlock={(g, action) => { void handleGroupBlock(g, action); }}
+        />
       ) : (
         <div className="rounded-lg border border-gray-200">
           {/* Device counter */}
@@ -615,6 +795,23 @@ export function DevicesScreen({ devices, groups, isSuperadmin, currentDeviceId }
             This cuts internet access for this device at the router. You can unblock it again at any time.
           </div>
         </HazoUiDialog>
+      )}
+
+      {/* Request access dialog */}
+      <RequestAccessDialog
+        state={requestAccess}
+        onClose={() => setRequestAccess(null)}
+      />
+
+      {/* FAB — Create Group (superadmin only, shown on groups tab) */}
+      {tab === 'groups' && isSuperadmin && (
+        <Link
+          href="/explore/groups/new"
+          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-lg hover:bg-teal-800 transition-colors z-10"
+          aria-label="Create group"
+        >
+          <Plus className="h-6 w-6" />
+        </Link>
       )}
     </div>
   );

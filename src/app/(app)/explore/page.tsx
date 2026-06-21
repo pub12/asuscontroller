@@ -1,6 +1,8 @@
 import { headers } from 'next/headers';
 import { resolveServerAuth } from '@/server/auth';
 import { listDevicesAndGroups } from '@/server/devices/deviceService';
+import { listGroups } from '@/server/groups/groupService';
+import { getDb } from '@/server/db';
 import { DevicesScreen } from './DevicesScreen';
 
 export const dynamic = 'force-dynamic'; // always fresh device data
@@ -16,6 +18,7 @@ async function requestClientIp(): Promise<string | null> {
 export default async function ExplorePage() {
   const auth = await resolveServerAuth();
   const { devices, groups } = await listDevicesAndGroups();
+  const groupSummaries = await listGroups(getDb());
 
   // Tag the device whose current_ip matches this request, so the UI can show a
   // "This device" label. Best-effort: on localhost the IP is ::1/127.0.0.1 and
@@ -31,6 +34,7 @@ export default async function ExplorePage() {
       <DevicesScreen
         devices={devices}
         groups={groups}
+        groupSummaries={groupSummaries}
         isSuperadmin={auth.isSuperadmin}
         currentDeviceId={currentDeviceId}
       />
