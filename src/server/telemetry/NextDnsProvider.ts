@@ -23,7 +23,7 @@
  * DO NOT import this file from any route, layout, autotest, or shared lib.
  */
 import 'server-only';
-import { getTelemetryKey } from '../secrets.js';
+import { getTelemetryKey } from '../secrets';
 import type {
   TelemetryProvider,
   DomainEventQuery,
@@ -33,7 +33,7 @@ import type {
   DomainRollup,
   DevicePresence,
   NotConfiguredResult,
-} from './TelemetryProvider.js';
+} from './TelemetryProvider';
 
 // ---------------------------------------------------------------------------
 // Sentinel builder
