@@ -225,6 +225,40 @@ registerScenario('state_audit_schema', {
   }],
 });
 
+registerScenario('block_sim', {
+  name: 'Blocking Core — FakeRouterProvider block simulation',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/block-sim-test → block/unblock/force/capability assertions all pass',
+    doc: {
+      description: [
+        'Calls /api/block-sim-test which exercises a fresh FakeRouterProvider in-memory.',
+        'Asserts: (1) initial getBlockState returns false (not blocked) for an unseeded MAC,',
+        '(2) setInternetAccess(mac, false) causes getBlockState to return true (blocked),',
+        '(3) setInternetAccess(mac, true) causes getBlockState to return false (unblocked),',
+        '(4) forceBlockState(mac, true) (drift hook) causes getBlockState to return true,',
+        '(5) capabilities().setInternetAccess === true (fake now reports blocking as supported).',
+        'Zero network calls — the fake is pure in-memory.',
+      ].join(' '),
+      inputs: 'GET /api/block-sim-test — no auth required (test-only route).',
+      expectedOutputs: [
+        'HTTP 200; ok, initial_unblocked, block_ok, unblock_ok, force_ok, cap_ok all true.',
+      ].join(' '),
+      caveats: 'No DB or network required. FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/block-sim-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.initial_unblocked, true);
+      assertEqual(b.block_ok, true);
+      assertEqual(b.unblock_ok, true);
+      assertEqual(b.force_ok, true);
+      assertEqual(b.cap_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',

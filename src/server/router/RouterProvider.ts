@@ -153,6 +153,18 @@ export interface RouterProvider {
    */
   setInternetAccess(mac: string, enabled: boolean): Promise<AccessResult>;
 
+  /**
+   * Best-effort read of the router's current per-MAC internet-block state.
+   *
+   * @returns true  = router reports this MAC is blocked (internet OFF),
+   *          false = router reports this MAC is NOT blocked,
+   *          null  = unknown / firmware does not report it reliably.
+   *
+   * Optional: providers that cannot determine block state omit it or return null.
+   * Drift reconcile treats `null` (unknown) as drift and re-applies the intended state.
+   */
+  getBlockState?(mac: string): Promise<boolean | null>;
+
   // -------------------------------------------------------------------------
   // Capabilities
   // -------------------------------------------------------------------------

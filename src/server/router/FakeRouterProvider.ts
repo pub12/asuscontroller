@@ -51,6 +51,9 @@ export class FakeRouterProvider implements RouterProvider {
   /** Internal mutable device map keyed by MAC address. */
   private readonly _devices: Map<string, DeviceRecord> = new Map();
 
+  /** Internal block state keyed by MAC address. true = blocked (internet OFF). */
+  private readonly _blocked: Map<string, boolean> = new Map();
+
   /**
    * @param seed  Optional list of RouterClient records to populate the fake
    *              with. Defaults to the built-in 10-device dataset. Pass a
@@ -97,19 +100,33 @@ export class FakeRouterProvider implements RouterProvider {
   }
 
   // -------------------------------------------------------------------------
-  // RouterProvider — write (out of scope for device-sync slice)
+  // RouterProvider — write (internet access)
   // -------------------------------------------------------------------------
 
   /**
-   * Blocking is out of scope for this build phase (device-sync slice).
-   * Always returns a failure result rather than throwing, so callers can
-   * handle it gracefully.
+   * Simulate enabling or disabling internet access for a client by MAC address.
+   * Tracks block state in-memory; no network calls are made.
+   *
+   * @param mac     Uppercase colon-separated MAC, e.g. "AA:BB:CC:DD:EE:FF".
+   * @param enabled true = grant internet access (unblock), false = block internet access.
    */
-  async setInternetAccess(_mac: string, _enabled: boolean): Promise<AccessResult> {
+  async setInternetAccess(mac: string, enabled: boolean): Promise<AccessResult> {
+    this._blocked.set(mac, !enabled);
     return {
-      success: false,
-      message: 'FakeRouterProvider does not support blocking (out of scope for the device-sync slice).',
+      success: true,
+      message: `Internet access ${enabled ? 'ENABLED' : 'DISABLED'} for ${mac} (fake)`,
     };
+  }
+
+  /**
+   * Read the current per-MAC internet-block state from in-memory state.
+   * The fake authoritatively knows its own state, so it never returns null.
+   *
+   * @returns true  = this MAC is blocked (internet OFF),
+   *          false = this MAC is NOT blocked.
+   */
+  async getBlockState(mac: string): Promise<boolean | null> {
+    return this._blocked.get(mac) ?? false;
   }
 
   // -------------------------------------------------------------------------
@@ -119,7 +136,7 @@ export class FakeRouterProvider implements RouterProvider {
   capabilities(): CapabilityMap {
     return {
       getClientList: true,
-      setInternetAccess: false,
+      setInternetAccess: true,
       reboot: false,
     };
   }
@@ -185,5 +202,14 @@ export class FakeRouterProvider implements RouterProvider {
    */
   removeDevice(mac: string): void {
     this._devices.delete(mac);
+  }
+
+  /**
+   * Force the router-level block state for a MAC directly, simulating an
+   * out-of-band change (e.g. someone unblocked at the router). Used by drift-
+   * reconcile tests to diverge router state from the app's intended state.
+   */
+  forceBlockState(mac: string, blocked: boolean): void {
+    this._blocked.set(mac, blocked);
   }
 }

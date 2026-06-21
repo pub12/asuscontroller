@@ -322,6 +322,24 @@ export class AsusWrtProvider implements RouterProvider {
     };
   }
 
+  /**
+   * Best-effort read of the current per-MAC block state from the router.
+   *
+   * Best-effort: stock ASUS firmware does not expose a reliable per-MAC block
+   * read via the CGI API. Returning null signals "unknown" so drift reconcile
+   * re-applies the intended state. The Phase 8 live test probes whether the
+   * firmware can report this at all (e.g. via a clientlist field); wire it here
+   * if a reliable signal is found.
+   */
+  async getBlockState(_mac: string): Promise<boolean | null> {
+    // Best-effort: stock ASUS firmware does not expose a reliable per-MAC block
+    // read via the CGI API. Returning null signals "unknown" so drift reconcile
+    // re-applies the intended state. The Phase 8 live test probes whether the
+    // firmware can report this at all (e.g. via a clientlist field); wire it here
+    // if a reliable signal is found.
+    return null;
+  }
+
   // -------------------------------------------------------------------------
   // Capabilities
   // -------------------------------------------------------------------------
