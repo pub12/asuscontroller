@@ -2,9 +2,10 @@
 // Separate process from the Next app (no instrumentation.ts).
 //
 // Usage:
-//   ROUTER_PROVIDER=fake SYNC_INTERVAL_SEC=60 node --conditions=react-server scripts/worker.mjs
+//   ROUTER_PROVIDER=fake TZ=Australia/Sydney SYNC_INTERVAL_SEC=60 node --conditions=react-server scripts/worker.mjs
 //
 // NOTE: --conditions=react-server is REQUIRED for the audit drain (hazo_audit/server imports 'server-only').
+// NOTE: TZ=Australia/Sydney is REQUIRED — schedules evaluate in AEST.
 //
 // ROUTER_PROVIDER=asus is explicitly blocked — this build has no hardware access.
 
@@ -230,7 +231,7 @@ const worker = createWorker({
   dialect: 'sqlite',
   tablePrefix: 'hazo_jobs',
   workerId: 'netwarden-sync-worker',
-  types: ['netwarden.sync', 'netwarden.retention'],
+  types: ['netwarden.sync', 'netwarden.retention', 'netwarden.block', 'netwarden.unblock'],
   pollMs: 1_000,
   concurrency: 1,
 });
@@ -245,6 +246,31 @@ const handler = async (job) => {
       await notify.alert({ title: '🔴 NetWarden retention prune failed', body: String(err?.message ?? err), dedupeKey: 'retention-failure' });
       throw err;
     }
+  }
+  if (job.type === 'netwarden.block' || job.type === 'netwarden.unblock') {
+    const p = typeof job.payload === 'string' ? JSON.parse(job.payload) : (job.payload ?? {});
+    let result;
+    try {
+      const { runScheduleFire } = await import('../src/server/schedules/runScheduleFire.ts');
+      result = await runScheduleFire(auditAdapter, provider, {
+        targetType: p.targetType,
+        targetId: p.targetId,
+        action: p.action,
+        scheduleId: p.scheduleId,
+      });
+    } catch (err) {
+      await notify.alert({ title: '🔴 NetWarden schedule fire failed', body: String(err?.message ?? err), dedupeKey: 'schedule-failure' });
+      throw err;
+    }
+    const { notifyScheduleFired } = await import('../src/server/notify/events.ts');
+    await notifyScheduleFired(notify, { action: p.action, targetType: p.targetType, targetId: p.targetId, affected: result.affected.length });
+    console.log('[worker] schedule fire', job.id, JSON.stringify(result));
+    try {
+      await auditWorker.drainOnce();
+    } catch (e) {
+      console.warn('[worker] audit drain failed', e?.message ?? e);
+    }
+    return result;
   }
   let summary;
   try {
@@ -275,7 +301,7 @@ const handler = async (job) => {
 // Keep a reference to the run promise so we can await it at the end
 // (worker.run resolves only when worker.stop() is called).
 const runPromise = worker.run(handler);
-console.log('[worker] Worker started (pollMs=1000, concurrency=1, type=netwarden.sync).');
+console.log('[worker] Worker started (pollMs=1000, concurrency=1, types=netwarden.sync|retention|block|unblock).');
 
 // ---------------------------------------------------------------------------
 // Boot-time immediate sync — submit a one-shot job with runAt=now so the

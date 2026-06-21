@@ -72,3 +72,16 @@ export async function notifyNewDevices(
   const body = `${args.count} new device(s) seen on the network`;
   await provider.alert({ title, body });
 }
+
+// ---------------------------------------------------------------------------
+// notifyScheduleFired
+// ---------------------------------------------------------------------------
+
+export async function notifyScheduleFired(
+  provider: NotifyProvider,
+  args: { action: 'block' | 'unblock'; targetType: 'device' | 'group'; targetId: string; affected: number },
+): Promise<void> {
+  const title = args.action === 'block' ? '⏰ Schedule fired — blocked' : '⏰ Schedule fired — unblocked';
+  const body = `${args.targetType} ${esc(args.targetId)} (${args.affected} affected)`;
+  await provider.alert({ title, body });
+}
