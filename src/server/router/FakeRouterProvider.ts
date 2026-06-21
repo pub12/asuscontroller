@@ -16,7 +16,27 @@
  * without touching any real router.
  */
 
+import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { join } from 'node:path';
 import type { RouterProvider, RouterClient, AccessResult, CapabilityMap } from './RouterProvider';
+
+/**
+ * Shared on-disk path for the fake router's block state.
+ *
+ * The web app (Next.js) and the background worker run as SEPARATE processes,
+ * each with its own FakeRouterProvider instance. Without a shared store, a
+ * block/unblock done in one process is invisible to the other's reconcile —
+ * so a scheduled unblock fired by the worker gets resurrected by the web app's
+ * pull-reconcile (and vice-versa). Pointing both production-path instances at
+ * the same file makes the fake behave like a single shared router, which is the
+ * whole point of a faithful fake. Honors NETWARDEN_FAKE_ROUTER_STATE if set.
+ *
+ * Autotests deliberately do NOT pass a persistPath, so they stay fully
+ * hermetic (pure in-memory, no cross-test or cross-process bleed).
+ */
+export function fakeRouterStatePath(): string {
+  return process.env.NETWARDEN_FAKE_ROUTER_STATE || join(process.cwd(), '.fake-router-state.json');
+}
 
 // ---------------------------------------------------------------------------
 // Default seed — 10 plausible devices; no randomness
@@ -55,15 +75,59 @@ export class FakeRouterProvider implements RouterProvider {
   private readonly _blocked: Map<string, boolean> = new Map();
 
   /**
+   * When set, block state is mirrored to/from this file so separate processes
+   * (web + worker) share one source of router truth. Unset = pure in-memory.
+   */
+  private readonly _persistPath?: string;
+
+  /**
    * @param seed  Optional list of RouterClient records to populate the fake
    *              with. Defaults to the built-in 10-device dataset. Pass a
    *              custom list in tests to control exactly which devices exist.
+   * @param opts.persistPath  Optional file path for cross-process block-state
+   *              sharing. Omit in autotests to keep them hermetic.
    */
-  constructor(seed?: RouterClient[]) {
+  constructor(seed?: RouterClient[], opts?: { persistPath?: string }) {
     const source = seed ?? DEFAULT_SEED;
     for (const client of source) {
       // Shallow-copy each entry so mutations don't leak back to the caller's array.
       this._devices.set(client.mac, { ...client });
+    }
+    this._persistPath = opts?.persistPath;
+    // Hydrate from the shared file so this instance starts in sync with peers.
+    this._loadBlocked();
+  }
+
+  // -------------------------------------------------------------------------
+  // Cross-process block-state persistence (no-op unless _persistPath is set)
+  // -------------------------------------------------------------------------
+
+  /** Load the block map from the shared file, replacing in-memory state. */
+  private _loadBlocked(): void {
+    if (!this._persistPath || !existsSync(this._persistPath)) return;
+    try {
+      const raw = readFileSync(this._persistPath, 'utf8');
+      const obj = JSON.parse(raw) as Record<string, boolean>;
+      this._blocked.clear();
+      for (const [mac, blocked] of Object.entries(obj)) {
+        this._blocked.set(mac, !!blocked);
+      }
+    } catch {
+      // Corrupt/partial file — ignore and keep current in-memory state.
+    }
+  }
+
+  /** Persist the block map to the shared file (atomic write via temp + rename). */
+  private _saveBlocked(): void {
+    if (!this._persistPath) return;
+    try {
+      const obj: Record<string, boolean> = {};
+      for (const [mac, blocked] of this._blocked.entries()) obj[mac] = blocked;
+      const tmp = `${this._persistPath}.${process.pid}.tmp`;
+      writeFileSync(tmp, JSON.stringify(obj), 'utf8');
+      renameSync(tmp, this._persistPath);
+    } catch {
+      // Best-effort — a failed persist must never break a block/unblock call.
     }
   }
 
@@ -111,7 +175,10 @@ export class FakeRouterProvider implements RouterProvider {
    * @param enabled true = grant internet access (unblock), false = block internet access.
    */
   async setInternetAccess(mac: string, enabled: boolean): Promise<AccessResult> {
+    // Load-modify-save so a concurrent peer's other-MAC changes aren't clobbered.
+    this._loadBlocked();
     this._blocked.set(mac, !enabled);
+    this._saveBlocked();
     return {
       success: true,
       message: `Internet access ${enabled ? 'ENABLED' : 'DISABLED'} for ${mac} (fake)`,
@@ -126,11 +193,13 @@ export class FakeRouterProvider implements RouterProvider {
    *          false = this MAC is NOT blocked.
    */
   async getBlockState(mac: string): Promise<boolean | null> {
+    this._loadBlocked(); // pick up writes from peer processes
     return this._blocked.get(mac) ?? false;
   }
 
   /** Bulk read of every MAC currently blocked in the fake's in-memory state. */
   async getBlockedMacs(): Promise<string[]> {
+    this._loadBlocked(); // pick up writes from peer processes
     const blocked: string[] = [];
     for (const [mac, isBlocked] of this._blocked.entries()) {
       if (isBlocked) blocked.push(mac.toUpperCase());
@@ -219,6 +288,8 @@ export class FakeRouterProvider implements RouterProvider {
    * reconcile tests to diverge router state from the app's intended state.
    */
   forceBlockState(mac: string, blocked: boolean): void {
+    this._loadBlocked();
     this._blocked.set(mac, blocked);
+    this._saveBlocked();
   }
 }

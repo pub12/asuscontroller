@@ -14,3 +14,6 @@ logs/
 
 # group images and other runtime data
 /data/
+
+# Fake router shared block state (dev only)
+.fake-router-state.json

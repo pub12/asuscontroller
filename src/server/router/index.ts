@@ -24,7 +24,7 @@
  */
 
 import type { RouterProvider } from './RouterProvider';
-import { FakeRouterProvider } from './FakeRouterProvider';
+import { FakeRouterProvider, fakeRouterStatePath } from './FakeRouterProvider';
 import { getRouterProviderMode } from '@/lib/env';
 
 /**
@@ -46,5 +46,7 @@ export async function getRouterProvider(): Promise<RouterProvider> {
     return new AsusWrtProvider();
   }
 
-  return new FakeRouterProvider();
+  // Share block state with the worker process via a file so a scheduled
+  // unblock fired by the worker isn't resurrected by this process's reconcile.
+  return new FakeRouterProvider(undefined, { persistPath: fakeRouterStatePath() });
 }

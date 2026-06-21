@@ -221,7 +221,7 @@ const auditWorker = startAuditWorker({ app_adapter: auditAdapter });
 // Import sync core and provider (dynamic import with .ts extension — Node v25
 // native type-stripping; relative path required, no @/ alias resolution)
 // ---------------------------------------------------------------------------
-const { FakeRouterProvider } = await import('../src/server/router/FakeRouterProvider.ts');
+const { FakeRouterProvider, fakeRouterStatePath } = await import('../src/server/router/FakeRouterProvider.ts');
 const { runDeviceSync } = await import('../src/server/sync/runDeviceSync.ts');
 const { pruneEvents } = await import('../src/server/retention/pruneEvents.ts');
 const { runTelemetryIngest } = await import('../src/server/telemetry/runTelemetryIngest.ts');
@@ -234,7 +234,9 @@ const { createNotifyProvider, isNotifyConfigured } = await import('../src/server
 const notify = createNotifyProvider();
 console.log(`[worker] Ops alerting: ${isNotifyConfigured() ? 'enabled' : 'disabled (TELEGRAM_* unset)'}`);
 
-const provider = new FakeRouterProvider();
+// Share block state with the web process via a file so a scheduled unblock
+// fired here isn't resurrected by the web app's pull-reconcile (and vice-versa).
+const provider = new FakeRouterProvider(undefined, { persistPath: fakeRouterStatePath() });
 const telemetryProvider = new FakeTelemetryProvider();
 
 // ---------------------------------------------------------------------------
