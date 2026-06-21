@@ -29,6 +29,7 @@ export const PATCH = withRequestContext(
   async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
     const auth = await resolveServerAuth();
     if (!auth.authenticated) return fail('UNAUTHORIZED', 'Not authenticated');
+    if (!auth.isSuperadmin) return fail('FORBIDDEN', 'Superadmin only');
 
     const { id } = await ctx.params;
 
@@ -61,6 +62,7 @@ export const DELETE = withRequestContext(
   async (_req: Request, ctx: { params: Promise<{ id: string }> }) => {
     const auth = await resolveServerAuth();
     if (!auth.authenticated) return fail('UNAUTHORIZED', 'Not authenticated');
+    if (!auth.isSuperadmin) return fail('FORBIDDEN', 'Superadmin only');
 
     const { id } = await ctx.params;
     const deleted = await deleteGroup(getDb(), id);

@@ -23,6 +23,10 @@ const CreateGroupBody = z.object({
 export const POST = withRequestContext(async (req: Request) => {
   const auth = await resolveServerAuth();
   if (!auth.authenticated) return fail('UNAUTHORIZED', 'Not authenticated');
+  // Group management (create) is a superadmin action, matching the rest of the
+  // admin surface (/api/grants, /api/admin/users). Non-superadmins get read +
+  // capability-gated block-all (with request-access), not structural management.
+  if (!auth.isSuperadmin) return fail('FORBIDDEN', 'Superadmin only');
 
   let json: unknown;
   try {

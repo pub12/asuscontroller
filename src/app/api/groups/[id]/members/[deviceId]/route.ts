@@ -7,6 +7,7 @@ export const DELETE = withRequestContext(
   async (_req: Request, ctx: { params: Promise<{ id: string; deviceId: string }> }) => {
     const auth = await resolveServerAuth();
     if (!auth.authenticated) return fail('UNAUTHORIZED', 'Not authenticated');
+    if (!auth.isSuperadmin) return fail('FORBIDDEN', 'Superadmin only');
 
     const { id, deviceId } = await ctx.params;
 

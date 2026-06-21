@@ -12,6 +12,7 @@ export const POST = withRequestContext(
   async (req: Request, ctx: { params: Promise<{ id: string }> }) => {
     const auth = await resolveServerAuth();
     if (!auth.authenticated) return fail('UNAUTHORIZED', 'Not authenticated');
+    if (!auth.isSuperadmin) return fail('FORBIDDEN', 'Superadmin only');
 
     const { id } = await ctx.params;
 
