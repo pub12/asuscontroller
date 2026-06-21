@@ -127,9 +127,18 @@ export async function createTimer(opts: {
   // Block immediately.
   const gate = { authorized: true, actorLabel: actor.label, actorUserId: actor.userId ?? null };
   if (targetType === 'device') {
-    await runBlockAction(adapter, provider, gate, targetId, 'block');
+    const outcome = await runBlockAction(adapter, provider, gate, targetId, 'block');
+    if (outcome.ok === false) {
+      throw new ScheduleServiceError(
+        outcome.code === 'NOT_FOUND' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
+        outcome.message,
+      );
+    }
   } else {
-    await runGroupBlockAction(adapter, provider, gate, targetId, 'block');
+    const outcome = await runGroupBlockAction(adapter, provider, gate, targetId, 'block');
+    if (outcome.ok === false) {
+      throw new ScheduleServiceError('NOT_FOUND', outcome.message);
+    }
   }
 
   const scheduleId = schedId();
@@ -205,9 +214,18 @@ export async function createUnblockTimer(opts: {
   // Unblock immediately.
   const gate = { authorized: true, actorLabel: actor.label, actorUserId: actor.userId ?? null };
   if (targetType === 'device') {
-    await runBlockAction(adapter, provider, gate, targetId, 'unblock');
+    const outcome = await runBlockAction(adapter, provider, gate, targetId, 'unblock');
+    if (outcome.ok === false) {
+      throw new ScheduleServiceError(
+        outcome.code === 'NOT_FOUND' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
+        outcome.message,
+      );
+    }
   } else {
-    await runGroupBlockAction(adapter, provider, gate, targetId, 'unblock');
+    const outcome = await runGroupBlockAction(adapter, provider, gate, targetId, 'unblock');
+    if (outcome.ok === false) {
+      throw new ScheduleServiceError('NOT_FOUND', outcome.message);
+    }
   }
 
   const scheduleId = schedId();

@@ -899,17 +899,18 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
       searchable: true,
       cell: (d) => {
         const IconComp = ICONS[d.icon ?? ''] ?? HardDrive;
+        const timer = d.id ? deviceTimers.get(d.id) : undefined;
         return (
           <span className="flex items-center gap-2">
             <IconComp className="h-4 w-4 flex-shrink-0 text-gray-400" />
             <span className="font-medium text-gray-800">{deviceDisplayName(d)}</span>
             {currentDeviceId && d.id === currentDeviceId && <ThisDeviceBadge />}
             {!!d.is_blocked && <BlockedBadge />}
-            {deviceTimers.get(d.id ?? '') && (
+            {timer && (
               <TimerBadge
-                timer={deviceTimers.get(d.id ?? '')!}
+                timer={timer}
                 nowMs={nowMs}
-                onCancel={() => void handleCancelTimer(deviceTimers.get(d.id ?? '')!)}
+                onCancel={() => void handleCancelTimer(timer)}
               />
             )}
           </span>
@@ -942,7 +943,9 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
     {
       key: 'is_new',
       label: 'Actions',
-      cell: (d) => (
+      cell: (d) => {
+        const timer = d.id ? deviceTimers.get(d.id) : undefined;
+        return (
         <span className="flex items-center gap-2">
           {!!d.is_new && (
             <button
@@ -953,7 +956,7 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
               New
             </button>
           )}
-          {isSuperadmin && !deviceTimers.get(d.id ?? '') && (
+          {isSuperadmin && d.id && !timer && (
             <Button
               variant="ghost"
               size="sm"
@@ -1002,7 +1005,8 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
             <Pencil className="h-3.5 w-3.5" />
           </Button>
         </span>
-      ),
+        );
+      },
     },
   ];
 
