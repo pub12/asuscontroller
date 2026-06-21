@@ -326,6 +326,64 @@ export async function GET() {
     }
 
     // -------------------------------------------------------------------------
+    // offline_rejected_ok (A1) — createTimer against an OFFLINE device must throw
+    //   (the immediate block fails) and create NO schedule row.
+    // -------------------------------------------------------------------------
+    let offline_rejected_ok = false;
+    {
+      let threw = false;
+      try {
+        await createTimer({
+          adapter, jobs, provider: fake,
+          targetType: 'device', targetId: 'd_offline',
+          durationMin: 60,
+          actor,
+        });
+      } catch (e) {
+        threw = true;
+        debug.offline_rejected_error = String(e);
+      }
+      const rows = await (adapter as unknown as RawAdapter).rawQuery(
+        'SELECT id FROM app_schedules WHERE target_id = ?',
+        { params: ['d_offline'] },
+      );
+      offline_rejected_ok = threw && rows.length === 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // dup_timer_rejected_ok (B2) — a second active one-shot on the same target
+    //   is rejected; only ONE active one-shot row remains.
+    //   (d_online's earlier timer was cancelled by early_unblock_ok, so it has
+    //    no active one-shot to start.)
+    // -------------------------------------------------------------------------
+    let dup_timer_rejected_ok = false;
+    {
+      await createTimer({
+        adapter, jobs, provider: fake,
+        targetType: 'device', targetId: 'd_online',
+        durationMin: 30,
+        actor,
+      });
+      let threw = false;
+      try {
+        await createTimer({
+          adapter, jobs, provider: fake,
+          targetType: 'device', targetId: 'd_online',
+          durationMin: 30,
+          actor,
+        });
+      } catch (e) {
+        threw = true;
+        debug.dup_timer_error = String(e);
+      }
+      const activeRows = await (adapter as unknown as RawAdapter).rawQuery(
+        "SELECT id FROM app_schedules WHERE target_id = ? AND cron IS NULL AND status = 'active'",
+        { params: ['d_online'] },
+      );
+      dup_timer_rejected_ok = threw && activeRows.length === 1;
+    }
+
+    // -------------------------------------------------------------------------
     // schedule_authz_ok — authorizeCapability enforces schedule.create
     //   - superadmin → allowed=true
     //   - non-superadmin with no grant → allowed=false
@@ -382,6 +440,8 @@ export async function GET() {
       fire_ok &&
       recurring_ok &&
       early_unblock_ok &&
+      offline_rejected_ok &&
+      dup_timer_rejected_ok &&
       schedule_authz_ok;
 
     return Response.json({
@@ -393,6 +453,8 @@ export async function GET() {
       fire_ok,
       recurring_ok,
       early_unblock_ok,
+      offline_rejected_ok,
+      dup_timer_rejected_ok,
       schedule_authz_ok,
       ...debug,
     });

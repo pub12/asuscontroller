@@ -96,6 +96,22 @@ async function loadRow(adapter: HazoConnectAdapter, id: string): Promise<Schedul
   return row as ScheduleRow;
 }
 
+async function assertNoActiveOneShot(
+  adapter: HazoConnectAdapter,
+  targetType: 'device' | 'group',
+  targetId: string,
+): Promise<void> {
+  const existing = await raw(adapter).rawQuery(
+    `SELECT id FROM app_schedules
+       WHERE target_type = ? AND target_id = ? AND cron IS NULL AND status = 'active'
+       LIMIT 1`,
+    { params: [targetType, targetId] },
+  );
+  if (existing.length > 0) {
+    throw new ScheduleServiceError('VALIDATION_FAILED', 'A timer is already active for this target');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // createTimer
 //
@@ -124,6 +140,8 @@ export async function createTimer(opts: {
     ? durationToISO(opts.durationMin)
     : opts.untilISO!;
 
+  await assertNoActiveOneShot(adapter, targetType, targetId);
+
   // Block immediately.
   const gate = { authorized: true, actorLabel: actor.label, actorUserId: actor.userId ?? null };
   if (targetType === 'device') {
@@ -144,42 +162,57 @@ export async function createTimer(opts: {
   const scheduleId = schedId();
   const payload: ScheduleJobPayload = { targetType, targetId, action: 'unblock', scheduleId };
 
-  const { jobId } = await jobs.submit({
-    type: 'netwarden.unblock',
-    description: 'scheduled unblock ' + targetId,
-    payload,
-    runAt,
-    maxAttempts: 1,
-  });
+  let jobId: string | undefined;
+  try {
+    const submitted = await jobs.submit({
+      type: 'netwarden.unblock',
+      description: 'scheduled unblock ' + targetId,
+      payload,
+      runAt,
+      maxAttempts: 1,
+    });
+    jobId = submitted.jobId;
 
-  // For device targets: stamp the scheduled unblock info into app_block_state.
-  if (targetType === 'device') {
-    await raw(adapter).rawQuery(
-      `UPDATE app_block_state
-          SET scheduled_unblock_at = ?, unblock_job_id = ?
-        WHERE device_id = ?`,
-      { params: [runAt, jobId, targetId] },
-    );
+    // For device targets: stamp the scheduled unblock info into app_block_state.
+    if (targetType === 'device') {
+      await raw(adapter).rawQuery(
+        `UPDATE app_block_state
+            SET scheduled_unblock_at = ?, unblock_job_id = ?
+          WHERE device_id = ?`,
+        { params: [runAt, jobId, targetId] },
+      );
+    }
+
+    const now = new Date().toISOString();
+    const row: ScheduleRow = {
+      id: scheduleId,
+      target_type: targetType,
+      target_id: targetId,
+      action: 'unblock',
+      run_at: runAt,
+      cron: null,
+      job_id: jobId,
+      status: 'active',
+      created_by: actor.userId ?? null,
+      created_at: now,
+      label: label ?? null,
+      window_id: null,
+    };
+
+    await scheduleSvc(adapter).insert(row);
+    return row;
+  } catch (e) {
+    // Best-effort compensation: cancel the job (if created) then revert the immediate block.
+    if (jobId != null) {
+      await jobs.cancel(jobId).catch(() => {});
+    }
+    if (targetType === 'device') {
+      await runBlockAction(adapter, provider, gate, targetId, 'unblock').catch(() => {});
+    } else {
+      await runGroupBlockAction(adapter, provider, gate, targetId, 'unblock').catch(() => {});
+    }
+    throw new ScheduleServiceError('JOBS_ERROR', `Failed to create timer: ${e instanceof Error ? e.message : String(e)}`);
   }
-
-  const now = new Date().toISOString();
-  const row: ScheduleRow = {
-    id: scheduleId,
-    target_type: targetType,
-    target_id: targetId,
-    action: 'unblock',
-    run_at: runAt,
-    cron: null,
-    job_id: jobId,
-    status: 'active',
-    created_by: actor.userId ?? null,
-    created_at: now,
-    label: label ?? null,
-    window_id: null,
-  };
-
-  await scheduleSvc(adapter).insert(row);
-  return row;
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +244,8 @@ export async function createUnblockTimer(opts: {
     ? durationToISO(opts.durationMin)
     : opts.untilISO!;
 
+  await assertNoActiveOneShot(adapter, targetType, targetId);
+
   // Unblock immediately.
   const gate = { authorized: true, actorLabel: actor.label, actorUserId: actor.userId ?? null };
   if (targetType === 'device') {
@@ -231,32 +266,47 @@ export async function createUnblockTimer(opts: {
   const scheduleId = schedId();
   const payload: ScheduleJobPayload = { targetType, targetId, action: 'block', scheduleId };
 
-  const { jobId } = await jobs.submit({
-    type: 'netwarden.block',
-    description: 'scheduled re-block ' + targetId,
-    payload,
-    runAt,
-    maxAttempts: 1,
-  });
+  let jobId: string | undefined;
+  try {
+    const submitted = await jobs.submit({
+      type: 'netwarden.block',
+      description: 'scheduled re-block ' + targetId,
+      payload,
+      runAt,
+      maxAttempts: 1,
+    });
+    jobId = submitted.jobId;
 
-  const now = new Date().toISOString();
-  const row: ScheduleRow = {
-    id: scheduleId,
-    target_type: targetType,
-    target_id: targetId,
-    action: 'block',
-    run_at: runAt,
-    cron: null,
-    job_id: jobId,
-    status: 'active',
-    created_by: actor.userId ?? null,
-    created_at: now,
-    label: label ?? null,
-    window_id: null,
-  };
+    const now = new Date().toISOString();
+    const row: ScheduleRow = {
+      id: scheduleId,
+      target_type: targetType,
+      target_id: targetId,
+      action: 'block',
+      run_at: runAt,
+      cron: null,
+      job_id: jobId,
+      status: 'active',
+      created_by: actor.userId ?? null,
+      created_at: now,
+      label: label ?? null,
+      window_id: null,
+    };
 
-  await scheduleSvc(adapter).insert(row);
-  return row;
+    await scheduleSvc(adapter).insert(row);
+    return row;
+  } catch (e) {
+    // Best-effort compensation: cancel the job (if created) then revert the immediate unblock.
+    if (jobId != null) {
+      await jobs.cancel(jobId).catch(() => {});
+    }
+    if (targetType === 'device') {
+      await runBlockAction(adapter, provider, gate, targetId, 'block').catch(() => {});
+    } else {
+      await runGroupBlockAction(adapter, provider, gate, targetId, 'block').catch(() => {});
+    }
+    throw new ScheduleServiceError('JOBS_ERROR', `Failed to create re-block timer: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -510,15 +560,13 @@ export async function cancelSchedule(opts: {
 
   await scheduleSvc(adapter).updateById(id, { status: 'cancelled' });
 
-  // If this was an active device timer (unblock + run_at set), clear the
-  // scheduled_unblock_at / unblock_job_id columns so the UI doesn't show
-  // a stale countdown.
+  // If this was a device timer (unblock + run_at set), clear the
+  // scheduled_unblock_at / unblock_job_id columns unconditionally (even for
+  // done/cancelled rows) so the UI never shows a stale countdown.
   if (
     row.target_type === 'device' &&
     row.action === 'unblock' &&
-    row.run_at != null &&
-    row.status !== 'cancelled' &&
-    row.status !== 'done'
+    row.run_at != null
   ) {
     await raw(adapter).rawQuery(
       `UPDATE app_block_state
