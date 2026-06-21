@@ -35,6 +35,7 @@ import {
 } from 'hazo_ui';
 import type { DeviceRow } from '@/server/devices/deviceService';
 import type { DeviceActivity, ActivityItem } from '@/server/devices/deviceActivity';
+import type { DomainInsights } from '@/server/telemetry/deviceDomainInsights';
 import { BlockTimerModal } from '@/components/BlockTimerModal';
 
 // ---------------------------------------------------------------------------
@@ -62,6 +63,8 @@ interface Props {
   isSuperadmin: boolean;
   activity: DeviceActivity;
   telemetryConfigured: boolean;
+  domainsToday: DomainInsights;
+  domains7d: DomainInsights;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,12 +202,16 @@ export function DeviceDetailScreen({
   isSuperadmin,
   activity,
   telemetryConfigured,
+  domainsToday,
+  domains7d,
 }: Props) {
   const router = useRouter();
   const [, setPending] = useTransition();
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
+  const [domainRange, setDomainRange] = useState<'today' | '7d'>('today');
+  const domains = domainRange === 'today' ? domainsToday : domains7d;
 
   const DeviceIcon = ICONS[device.icon ?? ''] ?? HardDrive;
   const displayName = deviceDisplayName(device);
@@ -367,15 +374,91 @@ export function DeviceDetailScreen({
 
       {/* ---- Top domains ---- */}
       <section>
-        <h2 className="mb-3 text-base font-semibold text-gray-800 flex items-center gap-2">
-          <Globe className="h-4 w-4 text-gray-400" />
-          Top Domains
-        </h2>
-        {!telemetryConfigured && (
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+            <Globe className="h-4 w-4 text-gray-400" />
+            Top Domains
+          </h2>
+          {telemetryConfigured && domains.monitoringEnabled && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setDomainRange('today')}
+                className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                  domainRange === 'today'
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setDomainRange('7d')}
+                className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                  domainRange === '7d'
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                }`}
+              >
+                7d
+              </button>
+            </div>
+          )}
+        </div>
+
+        {!telemetryConfigured ? (
           <EmptyState
             title="Domain insights not configured"
-            description="Connect NextDNS in Settings to see top domains."
+            description="Connect a telemetry provider (NextDNS) to see this device's top domains."
           />
+        ) : !domains.monitoringEnabled ? (
+          <EmptyState
+            title="Monitoring is off for this group"
+            description="Domain insights are hidden because this device's group has monitoring disabled. A superadmin can re-enable monitoring in the group's settings."
+          />
+        ) : domains.topDomains.length === 0 ? (
+          <EmptyState
+            title="No domain activity yet"
+            description="Once telemetry ingest runs, this device's top domains and recent lookups will appear here."
+          />
+        ) : (
+          <>
+            <p className="mb-2 text-xs text-gray-400">
+              {domains.totalQueries} queries &middot; {domains.topDomains.length} domains
+            </p>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 px-4">
+              {domains.topDomains.map((d) => (
+                <div key={d.domain} className="flex items-center justify-between py-3">
+                  <span className="min-w-0 flex-1 truncate text-sm text-gray-700">{d.domain}</span>
+                  <div className="ml-4 flex flex-shrink-0 items-center gap-2">
+                    {d.blockedCount > 0 && (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                        {d.blockedCount} blocked
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-500">{d.count} queries</span>
+                    <span className="text-xs text-gray-400">{timeAgo(d.lastSeen)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <h3 className="mb-2 mt-6 text-sm font-semibold text-gray-700">Recent lookups</h3>
+            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 px-4">
+              {domains.timeline.map((item, i) => (
+                <div key={i} className="flex items-center justify-between py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-sm text-gray-700">{item.domain}</span>
+                  <div className="ml-4 flex flex-shrink-0 items-center gap-2">
+                    {item.blocked && (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                        blocked
+                      </span>
+                    )}
+                    <span className="text-xs text-gray-400">{timeAgo(item.ts)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </section>
 

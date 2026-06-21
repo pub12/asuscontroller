@@ -10,40 +10,45 @@
  *   TELEMETRY_PROVIDER=nextdns            → NextDnsProvider (real DNS telemetry, server-only)
  *
  * WORKER-PURITY RULE:
- *   This factory uses require() and the '@/' path alias, so it is SERVER-SIDE ONLY.
+ *   This factory uses the '@/' path alias, so it is SERVER-SIDE ONLY.
  *   The plain-Node worker (scripts/worker.mjs) must NOT import this factory —
  *   it constructs new FakeTelemetryProvider() directly from the relative path,
  *   exactly as it does for FakeRouterProvider. This avoids the Next.js path-alias
  *   resolution that plain Node cannot handle.
  *
- * Why require() is used for BOTH branches (not await import()):
- *   1. NextDnsProvider imports 'server-only' and must only load on the nextdns
- *      branch — a static import would run its side-effects on every path.
- *   2. FakeTelemetryProvider does not exist yet (built in the next phase). Using
- *      require() means tsc does not statically resolve the module path, so this
- *      file typechecks correctly before the sibling is created.
+ * Why the static import of FakeTelemetryProvider is safe, and NextDnsProvider is lazy:
+ *   FakeTelemetryProvider has no 'server-only' guard and makes no network calls —
+ *   importing it statically is safe on every code path (identical to FakeRouterProvider).
+ *   NextDnsProvider imports 'server-only' and reads NextDNS credentials at module
+ *   initialisation time. A static import would run those side-effects even on the
+ *   fake path, which would fail in test environments where no credentials are
+ *   configured. The dynamic `await import()` ensures NextDnsProvider loads ONLY
+ *   when mode === 'nextdns' — identical to how getRouterProvider handles AsusWrtProvider.
+ *
+ * The function is now ASYNC (returns Promise<TelemetryProvider>) to enable the
+ * lazy import; callers must await it.
  */
 
 import type { TelemetryProvider } from './TelemetryProvider';
+import { FakeTelemetryProvider } from './FakeTelemetryProvider';
 import { getTelemetryProviderMode } from '@/lib/env';
 
 /**
  * Return the TelemetryProvider appropriate for the current environment.
  *
  * - On the 'fake' path (default): returns a FakeTelemetryProvider immediately.
- * - On the 'nextdns' path: lazily requires NextDnsProvider (pulling in server-only
+ * - On the 'nextdns' path: lazily imports NextDnsProvider (pulling in server-only
  *   and credentials) and returns a new instance.
  *
  * @returns A TelemetryProvider ready to use. Callers should check isConfigured()
  *          before making data requests; providers return a NotConfiguredResult
  *          sentinel rather than throwing when credentials are absent.
  */
-export function getTelemetryProvider(): TelemetryProvider {
+export async function getTelemetryProvider(): Promise<TelemetryProvider> {
   const mode = getTelemetryProviderMode();
   if (mode === 'nextdns') {
-    const { NextDnsProvider } = require('./NextDnsProvider');
+    const { NextDnsProvider } = await import('./NextDnsProvider');
     return new NextDnsProvider();
   }
-  const { FakeTelemetryProvider } = require('./FakeTelemetryProvider');
   return new FakeTelemetryProvider();
 }
