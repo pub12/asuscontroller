@@ -263,6 +263,105 @@ export const adminUsersRoute = defineRoute({
   },
 });
 
+export const groupsListRoute = defineRoute({
+  method: 'GET',
+  path: '/api/groups',
+  summary: 'List all groups with member counts and block status',
+  responses: {
+    200: {
+      description: 'Groups with aggregated member/block stats',
+      schema: z.object({ groups: z.array(z.any()) }),
+    },
+    401: { description: 'Not authenticated' },
+  },
+});
+
+export const groupsCreateRoute = defineRoute({
+  method: 'POST',
+  path: '/api/groups',
+  summary: 'Create a new group',
+  responses: {
+    200: {
+      description: 'Created group row',
+      schema: z.object({ group: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    422: { description: 'Invalid request body' },
+  },
+});
+
+export const groupGetRoute = defineRoute({
+  method: 'GET',
+  path: '/api/groups/{id}',
+  summary: 'Get a group with its members',
+  responses: {
+    200: {
+      description: 'Group and members array',
+      schema: z.object({ group: z.any(), members: z.array(z.any()) }),
+    },
+    401: { description: 'Not authenticated' },
+    404: { description: 'Group not found' },
+  },
+});
+
+export const groupPatchRoute = defineRoute({
+  method: 'PATCH',
+  path: '/api/groups/{id}',
+  summary: 'Update group metadata',
+  responses: {
+    200: {
+      description: 'Updated group row',
+      schema: z.object({ group: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    404: { description: 'Group not found' },
+    422: { description: 'Invalid request body' },
+  },
+});
+
+export const groupDeleteRoute = defineRoute({
+  method: 'DELETE',
+  path: '/api/groups/{id}',
+  summary: 'Delete a group and clear member references',
+  responses: {
+    200: {
+      description: 'Deletion confirmed',
+      schema: z.object({ deleted: z.literal(true) }),
+    },
+    401: { description: 'Not authenticated' },
+    404: { description: 'Group not found' },
+  },
+});
+
+export const groupAddMembersRoute = defineRoute({
+  method: 'POST',
+  path: '/api/groups/{id}/members',
+  summary: 'Add devices to a group',
+  responses: {
+    200: {
+      description: 'Updated group and members',
+      schema: z.object({ group: z.any(), members: z.array(z.any()) }),
+    },
+    401: { description: 'Not authenticated' },
+    404: { description: 'Group not found' },
+    422: { description: 'Invalid request body' },
+  },
+});
+
+export const groupRemoveMemberRoute = defineRoute({
+  method: 'DELETE',
+  path: '/api/groups/{id}/members/{deviceId}',
+  summary: 'Remove a device from a group',
+  responses: {
+    200: {
+      description: 'Updated group and members after removal',
+      schema: z.object({ group: z.any(), members: z.array(z.any()) }),
+    },
+    401: { description: 'Not authenticated' },
+    404: { description: 'Group not found' },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -280,4 +379,11 @@ export const ALL_ROUTES = [
   requestApproveRoute,
   requestDeclineRoute,
   adminUsersRoute,
+  groupsListRoute,
+  groupsCreateRoute,
+  groupGetRoute,
+  groupPatchRoute,
+  groupDeleteRoute,
+  groupAddMembersRoute,
+  groupRemoveMemberRoute,
 ];

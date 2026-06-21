@@ -137,11 +137,13 @@ const demoGroups = [
     name: 'Kids',
     description: 'Devices used by kids — apply schedules and content filters here.',
     color: '#f59e0b',
+    type: 'person',
   },
   {
     name: 'IoT',
     description: 'Smart home and IoT devices — isolate from main network.',
     color: '#0ea5e9',
+    type: 'generic',
   },
 ];
 
@@ -152,14 +154,18 @@ for (const group of demoGroups) {
   const existing = db.prepare('SELECT id FROM app_groups WHERE name = ?').get(group.name);
   if (existing) {
     groupsPresent++;
+    // Idempotent: update type if null
+    db.prepare(`UPDATE app_groups SET type = ? WHERE name = ? AND (type IS NULL OR type = '')`)
+      .run(group.type, group.name);
   } else {
     db.prepare(`
-      INSERT INTO app_groups (id, name, description, color, created_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO app_groups (id, name, description, type, color, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       crypto.randomUUID(),
       group.name,
       group.description,
+      group.type,
       group.color,
       new Date().toISOString(),
     );
@@ -168,5 +174,59 @@ for (const group of demoGroups) {
 }
 
 console.log(`[seed] Demo groups: ${groupsCreated} created, ${groupsPresent} already-present.`);
+
+// ── 5. Demo group members (best-effort) ──────────────────────────────────────
+// Query existing devices from sync. If none exist, skip gracefully.
+const allDevices = db.prepare('SELECT id, primary_group_id FROM app_devices LIMIT 20').all();
+
+if (allDevices.length === 0) {
+  console.log('[seed] No devices found — skipping group member assignment (run sync first).');
+} else {
+  const kidsGroup = db.prepare('SELECT id FROM app_groups WHERE name = ?').get('Kids');
+  const iotGroup = db.prepare('SELECT id FROM app_groups WHERE name = ?').get('IoT');
+
+  let membersAdded = 0;
+  const now = new Date().toISOString();
+
+  // Assign up to 3 devices to Kids, up to 3 (different if possible) to IoT
+  const kidsDevices = allDevices.slice(0, 3);
+  const iotDevices = allDevices.length >= 6
+    ? allDevices.slice(3, 6)
+    : allDevices.slice(Math.min(3, allDevices.length)).concat(allDevices.slice(0, Math.max(0, 3 - (allDevices.length - 3))));
+
+  for (const device of kidsDevices) {
+    if (!kidsGroup) break;
+    const exists = db.prepare('SELECT 1 FROM app_group_members WHERE group_id = ? AND device_id = ?')
+      .get(kidsGroup.id, device.id);
+    if (!exists) {
+      db.prepare(`INSERT INTO app_group_members (group_id, device_id, added_by, added_at) VALUES (?, ?, ?, ?)`)
+        .run(kidsGroup.id, device.id, 'seed', now);
+      membersAdded++;
+    }
+    // Set primary_group_id where null
+    if (!device.primary_group_id) {
+      db.prepare(`UPDATE app_devices SET primary_group_id = ? WHERE id = ? AND (primary_group_id IS NULL OR primary_group_id = '')`)
+        .run(kidsGroup.id, device.id);
+    }
+  }
+
+  for (const device of iotDevices) {
+    if (!iotGroup) break;
+    const exists = db.prepare('SELECT 1 FROM app_group_members WHERE group_id = ? AND device_id = ?')
+      .get(iotGroup.id, device.id);
+    if (!exists) {
+      db.prepare(`INSERT INTO app_group_members (group_id, device_id, added_by, added_at) VALUES (?, ?, ?, ?)`)
+        .run(iotGroup.id, device.id, 'seed', now);
+      membersAdded++;
+    }
+    // Set primary_group_id where null
+    if (!device.primary_group_id) {
+      db.prepare(`UPDATE app_devices SET primary_group_id = ? WHERE id = ? AND (primary_group_id IS NULL OR primary_group_id = '')`)
+        .run(iotGroup.id, device.id);
+    }
+  }
+
+  console.log(`[seed] Group members: ${membersAdded} added (Kids up to 3, IoT up to 3, idempotent).`);
+}
 
 db.close();

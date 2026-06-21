@@ -629,6 +629,47 @@ registerScenario('requests_api', {
   }],
 });
 
+registerScenario('groups_crud', {
+  name: 'Groups — CRUD + membership lifecycle',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/groups-test → create, member count, primary assignment, block status, remove, delete all pass',
+    doc: {
+      description: [
+        'Calls /api/groups-test which spins up a throwaway temp SQLite DB and exercises the',
+        'full groupService lifecycle.',
+        'Asserts: (create_ok) createGroup returns a row with an id and name;',
+        '(member_count_ok) after adding 2 devices (one online, one offline), listGroups shows',
+        'memberCount===2 and onlineCount===1;',
+        '(primary_on_first_add_ok) a device with NULL primary_group_id gets primary_group_id',
+        'set to the group after addMembers; a device that already has a primary keeps it;',
+        '(block_status_ok) both unblocked → isBlocked false; both blocked → isBlocked true;',
+        'one blocked → isBlocked false;',
+        '(remove_member_ok) removeMember drops the row and nulls primary_group_id if it pointed',
+        'at the group;',
+        '(delete_nulls_primary_ok) deleteGroup removes member rows, nulls primary_group_id on',
+        'affected devices, and removes the group (getGroup → null).',
+      ].join(' '),
+      inputs: 'GET /api/groups-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. Zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/groups-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.create_ok, true);
+      assertEqual(b.member_count_ok, true);
+      assertEqual(b.primary_on_first_add_ok, true);
+      assertEqual(b.block_status_ok, true);
+      assertEqual(b.remove_member_ok, true);
+      assertEqual(b.delete_nulls_primary_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('grants', {
   name: 'Permissions — grantsService CRUD lifecycle',
   pkg: 'netwarden',
