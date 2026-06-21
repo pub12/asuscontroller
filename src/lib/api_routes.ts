@@ -406,6 +406,70 @@ export const groupUnblockRoute = defineRoute({
   },
 });
 
+export const schedulesListRoute = defineRoute({
+  method: 'GET',
+  path: '/api/schedules',
+  summary: 'List schedules, optionally filtered by targetType/targetId',
+  responses: {
+    200: {
+      description: 'Schedules grouped by category (timers, upcoming, recurring, windows)',
+      schema: z.object({
+        timers: z.array(z.any()),
+        upcoming: z.array(z.any()),
+        recurring: z.array(z.any()),
+        windows: z.array(z.any()),
+      }),
+    },
+    401: { description: 'Not authenticated' },
+  },
+});
+
+export const schedulesCreateRoute = defineRoute({
+  method: 'POST',
+  path: '/api/schedules',
+  summary: 'Create a schedule (timer, future, recurring, or window)',
+  responses: {
+    200: {
+      description: 'Created schedule row(s)',
+      schema: z.object({ schedule: z.any().optional(), blockRow: z.any().optional(), unblockRow: z.any().optional() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Not authorized' },
+    422: { description: 'Invalid request body' },
+  },
+});
+
+export const scheduleUpdateRoute = defineRoute({
+  method: 'PATCH',
+  path: '/api/schedules/{id}',
+  summary: 'Update a schedule (cron, action, run_at, enabled, label)',
+  responses: {
+    200: {
+      description: 'Updated schedule row',
+      schema: z.object({ schedule: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Not authorized' },
+    404: { description: 'Schedule not found' },
+    422: { description: 'Invalid request body' },
+  },
+});
+
+export const scheduleDeleteRoute = defineRoute({
+  method: 'DELETE',
+  path: '/api/schedules/{id}',
+  summary: 'Cancel (delete) a schedule',
+  responses: {
+    200: {
+      description: 'Cancelled schedule row',
+      schema: z.object({ schedule: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Not authorized' },
+    404: { description: 'Schedule not found' },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -433,4 +497,8 @@ export const ALL_ROUTES = [
   groupImageUploadRoute,
   groupBlockRoute,
   groupUnblockRoute,
+  schedulesListRoute,
+  schedulesCreateRoute,
+  scheduleUpdateRoute,
+  scheduleDeleteRoute,
 ];
