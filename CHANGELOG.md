@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-06-21 — Phase 7 — Timers & Schedules (fake-first, overnight autonomous) + master_plan reconcile
+Built the full Timers & Schedules vertical fake-first: one-shot timers, future-dated one-shots, and
+recurring block/unblock windows — all verified against FakeRouterProvider. Worker fires netwarden.block/
+unblock as a SYSTEM actor (audited as schedule-initiated). tsc + next build clean; all_ok autotests green.
+master_plan.md reconciled: Phases 5, 6, 7 and Phase 10 Ops marked done; dashboard and Phase Map updated.
+
+- **Migration 0005:** app_schedules label column + window_id (links block-cron and unblock-cron pairs).
+- **Worker-pure schedule engine:** runScheduleFire + scheduleService; AEST timezone (TZ=Australia/Sydney);
+  jobsAdapter bridge connects hazo_jobs to the schedule service; all evaluation runs in the worker process.
+- **System-actor fires:** worker fires netwarden.block/unblock as a SYSTEM actor; mutations audited as
+  schedule-initiated (not re-checked per fire); notifyScheduleFired hook called on each fire.
+- **Schedules HTTP API:** list/create/update/cancel endpoints; discriminated kind (one-shot vs recurring
+  window); schedule.create and schedule.cancel capability checks via the grants guard.
+- **BlockTimerModal + SchedulesScreen UI:** quick picks + until-time + recurring toggles (REVIEW-pending;
+  HazoUiDialog used; design bottom-sheet still open); SchedulesScreen lists active and upcoming schedules.
+- **Autotests:** 6 schedule autotests added; includes notify-fired assertion; all_ok green.
+- **master_plan reconcile:** Phases 5/6/7 all checklist items flipped to [x]; Phase 10 Ops items flipped
+  to [x]; Progress dashboard recounted (Done=36, In-progress=3, Not-started=19, Total=58, 62%); Phase Map
+  updated to done for Phases 5/6/7 and ops-slice-done for Phase 10. Trade-off ledger rows **D10–D13**
+  appended to the master_plan ledger (D10 schedules=app_schedules+hazo_jobs/system-actor/edge-triggered;
+  D11 fixed AEST; D12 fire-late on downtime; D13 recurring window = two linked rows via window_id).
+- **Docs note:** DECISIONS.md (the prose mirror) lags the canonical master_plan ledger — it only carries
+  D1–D5; D6–D13 live as rows in the master_plan trade-off ledger. Backfilling D6–D13 as DECISIONS.md
+  prose is a separate, non-blocking docs cleanup.
+
 ## 2026-06-21 — Device Sync vertical slice (fake-provider, overnight autonomous)
 Built the entire device-sync vertical against a deterministic FakeRouterProvider — fake router →
 recurring sync job → app_devices → APIs → Explore Devices screen. Zero live router/NextDNS traffic

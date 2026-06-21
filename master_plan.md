@@ -17,21 +17,21 @@ Last updated: 2026-06-21
 Overall:
 | Done | In progress | Not started | Total | % |
 |---|---|---|---|---|
-| 20 | 4 | 34 | 58 | 34% |
+| 36 | 3 | 19 | 58 | 62% |
 
 By phase:
 | Phase | Done | Total |
 |---|---|---|
-| 1 Feasibility Spike | 4 | 7 |
+| 1 Feasibility Spike | 5 | 7 |
 | 2 Foundations | 8 | 8 |
 | 3 Router + Sync | 3 | 4 |
 | 4 Blocking Core | 5 | 5 |
-| 5 Permissions | 0 | 4 |
-| 6 Groups & Images | 0 | 5 |
-| 7 Timers & Schedules | 0 | 4 |
+| 5 Permissions | 4 | 4 |
+| 6 Groups & Images | 5 | 5 |
+| 7 Timers & Schedules | 4 | 4 |
 | 8 Telemetry + Drill-down | 0 | 5 |
 | 9 Analytics | 0 | 4 |
-| 10 Polish | 0 | 5 |
+| 10 Polish | 2 | 5 |
 | Backlog | 0 | 7 |
 
 Recount commands:
@@ -60,18 +60,18 @@ Recount commands:
   - State & Reconcile — app_block_state + hazo_state CAS; drift reconcile in sync — `2/2 done` (hazo_state CAS/TTL marker; reconcile re-apply pass in runDeviceSync; reconcile-test green)
   - Audit — hazo_audit on every mutation; device audit-history view — `1/1 done` (outbox on every mutation + worker drain; audit-drain-test green)
   - Device Detail — access toggle, time-on-device, activity timeline (screen copy 4) — `1/1 done` (DeviceDetailScreen + getDeviceActivity; device-activity-test green)
-- **Phase 5 — Permissions (planned)** — capability grants + request/approve + admin shell.
-  - Grants & Requests — app_user_grants + app_access_requests workflow — `0/2 done, 2M left`
-  - Mutation Gating — shared hazo_api guard checks grants server-side — `0/1 done, 1M left`
-  - Admin Screen — hazo_admin Users/Pending/Grants tabs (screen 06 redesign) — `0/1 done, 1M left`
-- **Phase 6 — Groups & Images (planned)** — group CRUD, images, Explore Groups, block-all.
-  - Group CRUD — name/desc/type(person|generic)/color + members join — `0/1 done, 1M left`
-  - Images — hazo_files upload+validate, hazo_images resize/thumbnail — `0/1 done, 1M left`
-  - Explore (Groups) — card grid + block-all (screen.png); Create Group + Group detail (screen copy 5) — `0/2 done, 2M left`
-  - Group Block — block-all/unblock-all, per-device partial-failure capture — `0/1 done, 1M left`
-- **Phase 7 — Timers & Schedules (planned)** — one-shot timers + recurring windows.
-  - Timers — 15m/30m/1h/2h/custom/until-time; one-shot hazo_jobs unblock — `0/1 done, 1M left`
-  - Schedules — recurring/future blocks; app_schedules; modal (screen copy 2); Schedules screen — `0/3 done, 3M left`
+- **Phase 5 — Permissions (done)** — capability grants (app_user_grants) + request/approve workflow + superadmin admin shell — shipped, fake-first.
+  - Grants & Requests — app_user_grants + app_access_requests workflow — `2/2 done`
+  - Mutation Gating — shared hazo_api guard checks grants server-side — `1/1 done`
+  - Admin Screen — hazo_admin Users/Pending/Grants tabs (screen 06 redesign) — `1/1 done`
+- **Phase 6 — Groups & Images (done)** — group CRUD + images (hazo_files/hazo_images) + Explore Groups + block-all — shipped.
+  - Group CRUD — name/desc/type(person|generic)/color + members join — `1/1 done`
+  - Images — hazo_files upload+validate, hazo_images resize/thumbnail — `1/1 done`
+  - Explore (Groups) — card grid + block-all (screen.png); Create Group + Group detail (screen copy 5) — `2/2 done`
+  - Group Block — block-all/unblock-all, per-device partial-failure capture — `1/1 done`
+- **Phase 7 — Timers & Schedules (done)** — one-shot timers + future-dated + recurring windows + Block-timer modal + Schedules screen — shipped fake-first (AEST, edge-triggered, system-actor fires).
+  - Timers — 15m/30m/1h/2h/custom/until-time; one-shot hazo_jobs unblock — `1/1 done`
+  - Schedules — recurring/future blocks; app_schedules; modal (screen copy 2); Schedules screen — `3/3 done`
 - **Phase 8 — Telemetry + Drill-down (planned)** — NextDNS provider, ingest/rollup, domain views.
   - TelemetryProvider — NextDnsProvider (+ Merlin alt, stock fallback) — `0/1 done, 1L left`
   - Jobs — netwarden.ingest (1–5min); netwarden.rollup (daily) + prune — `0/2 done, 2M left`
@@ -81,9 +81,9 @@ Recount commands:
   - Presence & Estimates — app_device_presence; sessionisation (est. + query count) — `0/2 done, 2M left`
   - Charts — Analytics screen, date range, hazo_dataviz (screen copy / copy 3) — `0/1 done, 1M left`
   - Flags (optional) — hazo_umetrics feature flags / usage analytics — `0/1 done, 1M left`
-- **Phase 10 — Polish (planned)** — PWA, responsive desktop, notify, retention.
+- **Phase 10 — Polish (ops slice done; PWA/responsive planned)** — PWA, responsive desktop, notify, retention.
   - PWA & Responsive — installable; mobile→desktop responsive sweep — `0/2 done, 1M 1M left`
-  - Ops — hazo_notify Telegram sync/job alerts; retention prune enforcement — `0/2 done, 2S left`
+  - Ops — hazo_notify Telegram sync/job alerts; retention prune enforcement — `2/2 done` (notify alerting + retention shipped)
   - Extras (optional) — hazo_feedback / hazo_pdf export — `0/1 done, 1M left`
 - **Backlog / Unscheduled (backlog)** — §15 future work, recorded so it isn't reinvented.
   - Future Control — per-device per-domain blocking; DoH handling — `0/2 done, 1L 1M left`
@@ -144,31 +144,31 @@ Recount commands:
 
 ### Phase 5 — Permissions
 **Grants & Requests**
-- [ ] (P1)(M) app_user_grants — capability model (device/group block·unblock, schedule create·cancel), global|group scope
-- [ ] (P1)(M) Access request → approve/decline workflow (app_access_requests); direct grant; revoke
+- [x] (P1)(M) app_user_grants — capability model (device/group block·unblock, schedule create·cancel), global|group scope
+- [x] (P1)(M) Access request → approve/decline workflow (app_access_requests); direct grant; revoke
 **Mutation Gating**
-- [ ] (P1)(M) Shared hazo_api guard — check grants server-side on every mutation, audited
+- [x] (P1)(M) Shared hazo_api guard — check grants server-side on every mutation, audited
 **Admin Screen**
-- [ ] (P1)(M) Superadmin Admin screen on hazo_admin — Users / Pending requests / Grants tabs, scope-to-group (design/screens/screen copy 3.png context)
+- [x] (P1)(M) Superadmin Admin screen on hazo_admin — Users / Pending requests / Grants tabs, scope-to-group (design/screens/screen copy 3.png context)
 
 ### Phase 6 — Groups & Images
 **Group CRUD**
-- [ ] (P1)(M) Group CRUD — name, description, type (person|generic), color; app_groups + app_group_members join (multi-group, primary highlighted)
+- [x] (P1)(M) Group CRUD — name, description, type (person|generic), color; app_groups + app_group_members join (multi-group, primary highlighted)
 **Images**
-- [ ] (P1)(M) Group/person images via hazo_files (upload + type/size validate) + hazo_images (resize/thumbnail); image_file_id reference
+- [x] (P1)(M) Group/person images via hazo_files (upload + type/size validate) + hazo_images (resize/thumbnail); image_file_id reference
 **Explore (Groups)**
-- [ ] (P1)(M) Explore — Groups screen: card grid (image, member/online count, block status, Block all), FAB (design/screens/screen.png)
-- [ ] (P1)(M) Create Group screen (design/screens/screen copy 5.png) + Group detail screen (image, members, block-all, group analytics/schedules)
+- [x] (P1)(M) Explore — Groups screen: card grid (image, member/online count, block status, Block all), FAB (design/screens/screen.png)
+- [x] (P1)(M) Create Group screen (design/screens/screen copy 5.png) + Group detail screen (image, members, block-all, group analytics/schedules)
 **Group Block**
-- [ ] (P1)(M) Block-all / Unblock-all members — iterate, per-device partial-failure capture + audit, honour per-group scope
+- [x] (P1)(M) Block-all / Unblock-all members — iterate, per-device partial-failure capture + audit, honour per-group scope
 
 ### Phase 7 — Timers & Schedules
 **Timers**
-- [ ] (P1)(M) Timer options — 15m / 30m / 1h / 2h / custom / until-time; backed by one-shot hazo_jobs unblock (cancel on early manual unblock)
+- [x] (P1)(M) Timer options — 15m / 30m / 1h / 2h / custom / until-time; backed by one-shot hazo_jobs unblock (cancel on early manual unblock)
 **Schedules**
-- [ ] (P1)(M) Recurring + future-dated block/unblock (cron windows); app_schedules with job_id handle
-- [ ] (P1)(M) Block-with-timer modal — quick picks + until-time + recurring toggles (design/screens/screen copy 2.png)
-- [ ] (P1)(M) Schedules screen — active & upcoming one-shot + recurring; edit/cancel
+- [x] (P1)(M) Recurring + future-dated block/unblock (cron windows); app_schedules with job_id handle
+- [x] (P1)(M) Block-with-timer modal — quick picks + until-time + recurring toggles (design/screens/screen copy 2.png)
+- [x] (P1)(M) Schedules screen — active & upcoming one-shot + recurring; edit/cancel
 
 ### Phase 8 — Telemetry + Drill-down
 **TelemetryProvider**
@@ -195,8 +195,8 @@ Recount commands:
 - [ ] (P2)(M) PWA-installable; one-handed empty/low-fidelity states
 - [ ] (P2)(M) Desktop-responsive sweep across all screens (mobile-first → desktop layouts)
 **Ops**
-- [ ] (P2)(S) hazo_notify Telegram alerting — sync / job / telemetry-gap failures
-- [ ] (P2)(S) Retention pruning enforcement (default 30d raw, then aggregated only)
+- [x] (P2)(S) hazo_notify Telegram alerting — sync / job / telemetry-gap failures
+- [x] (P2)(S) Retention pruning enforcement (default 30d raw, then aggregated only)
 **Extras (optional)**
 - [ ] (P3)(M) Optional hazo_feedback in-app feedback / hazo_pdf analytics export
 
@@ -234,6 +234,10 @@ Recount commands:
 | D8 · hazo_state for block desired-state | Bespoke locking | hazo_state CAS + TTL marker holds intended block state to avoid double-apply / racing the reconcile pass | Revisit if hazo_state limits surface | Contention or TTL-expiry issues observed |
 | D9 · hazo_audit outbox + drain in worker | Synchronous audit on the request path | Mutations write an audit outbox row; worker.mjs drains via startAuditWorker.drainOnce after each sync (busy_timeout set, react-server conditions) | Co-locate drain if runtime topology merges | Deploy/runtime model decided (ties to D2) |
 | getBlockState unknown on stock ASUS firmware | Router reports authoritative per-device block state | getBlockState returns null on stock firmware ⇒ reconcile treats "unknown" as "re-apply intended" (re-applies block, never auto-unblocks) and trusts app_block_state as source of truth | Merlin/JFFS or a firmware that exposes block state | Firmware exposes reliable block-state read |
+| D10 · Schedules = app_schedules + hazo_jobs | A first-class scheduling subsystem | One-shot via `jobs.submit({runAt})`, recurring via `jobs.schedules.create({cron})`; fires run as a **system actor** (audited as schedule-initiated, not re-checked per fire); **edge-triggered** writes to app_block_state exactly like a manual action (manual unblock wins until the next edge) | Continuous-assert "window membership" model if needed | A continuous-assert window requirement appears |
+| D11 · Fixed AEST (Australia/Sydney) for all schedule evaluation | Per-household timezone | Worker runs with `TZ=Australia/Sydney`; create-time wall-clock ("until 9pm") converted to an absolute instant in AEST (DST-safe via Intl) | Per-household / multi-TZ schedule evaluation | Multi-timezone households appear |
+| D12 · Fire-late on worker downtime | Exactly-on-time fires with catch-up policy | hazo_jobs default: past-due jobs promote to pending on worker restart and fire late; no staleness-skip; reconcile smooths resulting state | Add a staleness-skip / catch-up policy | Surprise late blocks are reported |
+| D13 · Recurring window = two linked rows | First-class window entity | A block-cron row + an unblock-cron row linked via `window_id` (migration 0005), reusing the one-shot/recurring machinery | Promote to a first-class window entity | A first-class window entity is warranted |
 
 > Discipline: log every real trade-off here as it's made — compromise, the ideal, the interim
 > in place, the long-term fix, and the trigger that should make us revisit.
