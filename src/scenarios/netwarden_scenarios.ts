@@ -1053,3 +1053,50 @@ registerScenario('retention', {
     },
   }],
 });
+
+/**
+ * telemetry_ingest — runTelemetryIngest full lifecycle against a temp SQLite DB.
+ *
+ * Covers: cold-start 24h backfill insert (39 events), unknown-MAC rejection (no orphan row),
+ * idempotent re-ingest (composite-PK dedupe), blocked-flag persistence (4 rows),
+ * and not-configured provider graceful no-op.
+ */
+registerScenario('telemetry_ingest', {
+  name: 'Telemetry Ingest — cold start, dedupe, unknown-MAC, blocked flag, not-configured no-op',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/ingest-test → all 6 ingest lifecycle assertions pass',
+    doc: {
+      description: [
+        'Calls /api/ingest-test which spins up a throwaway temp SQLite DB, seeds 10 device rows',
+        'via runDeviceSync, and runs three rounds of runTelemetryIngest with a FakeTelemetryProvider.',
+        'Asserts: (initial_insert_ok) first ingest with cold table covers the 24h backfill window,',
+        'inserts all 39 seed events (configured=true, inserted===39, skipped===0, count===39);',
+        '(fetched_ok) provider returned 40 events total (39 seed + 1 injected unknown-MAC event);',
+        '(unknown_mac_ok) the unknown-MAC event is counted (unknown_mac===1) but no orphan row',
+        'is written to app_domain_events (domain "unknown-device.example" count===0);',
+        '(reingest_dedupe_ok) second ingest is idempotent: inserted===0, skipped>=1, total count',
+        'unchanged at 39 (composite-PK "dom_"+mac+"_"+ts+"_"+domain deduplicates);',
+        '(blocked_persisted_ok) exactly 4 app_domain_events rows have blocked=1 (all doubleclick.net);',
+        '(not_configured_ok) inline stub provider returning configured:false → configured===false,',
+        'fetched===0, inserted===0, event count still 39 (graceful no-op).',
+      ].join(' '),
+      inputs: 'GET /api/ingest-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. FakeTelemetryProvider and FakeRouterProvider make zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/ingest-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.initial_insert_ok, true);
+      assertEqual(b.fetched_ok, true);
+      assertEqual(b.unknown_mac_ok, true);
+      assertEqual(b.reingest_dedupe_ok, true);
+      assertEqual(b.blocked_persisted_ok, true);
+      assertEqual(b.not_configured_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
