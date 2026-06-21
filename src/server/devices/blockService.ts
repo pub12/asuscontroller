@@ -96,7 +96,7 @@ export async function unblockDevice(
   adapter: HazoConnectAdapter,
   provider: RouterProvider,
   deviceId: string,
-  opts: { actor: BlockActor },
+  opts: { actor: BlockActor; jobs?: { cancel(id: string): Promise<{ cancelled: boolean; reason?: string }> } },
 ): Promise<BlockResult> {
   const device = await createCrudService<DeviceRow>(adapter, 'app_devices').findById(deviceId);
   if (!device) throw new BlockServiceError('NOT_FOUND', 'Device not found');
@@ -121,6 +121,25 @@ export async function unblockDevice(
   await runWithAuditContext(
     { actor_kind: 'user', actor_user_id: opts.actor.userId ?? null, actor_label: opts.actor.label },
     async () => {
+      // Early-unblock hook: if a jobs client is provided and there's a pending
+      // scheduled unblock job, cancel it so it doesn't fire after the manual unblock.
+      if (opts.jobs && existing.unblock_job_id) {
+        const unblockJobId = String(existing.unblock_job_id);
+        try {
+          await opts.jobs.cancel(unblockJobId);
+        } catch { /* tolerate cancel failure */ }
+        // Cancel the matching app_schedules row too.
+        // Cast: HazoConnectAdapter's base type uses RequestInit but the SQLite
+        // adapter accepts { params } — same pattern as runDeviceSync.ts.
+        type RawAdapter = { rawQuery(sql: string, opts?: { params?: unknown[] }): Promise<any[]> };
+        try {
+          await (adapter as unknown as RawAdapter).rawQuery(
+            `UPDATE app_schedules SET status = 'cancelled' WHERE job_id = ? AND status = 'active'`,
+            { params: [unblockJobId] },
+          );
+        } catch { /* best-effort */ }
+      }
+
       await auditedBlock.updateById(deviceId, row, { audit: { before_row: existing } });
       await setBlockMarker(adapter, deviceId, false);
       await emitIntentEvent(adapter, {

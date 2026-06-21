@@ -15,13 +15,14 @@ export async function runBlockAction(
   deviceId: string,
   action: BlockAction,
   reason?: string,
+  opts?: { jobs?: { cancel(id: string): Promise<{ cancelled: boolean; reason?: string }> } },
 ): Promise<BlockActionOutcome> {
   if (!gate.authorized) return { ok: false, code: 'FORBIDDEN', message: 'Not authorized' };
   const actor = { userId: gate.actorUserId ?? null, label: gate.actorLabel };
   try {
     const result = action === 'block'
       ? await blockDevice(adapter, provider, deviceId, { actor, reason })
-      : await unblockDevice(adapter, provider, deviceId, { actor });
+      : await unblockDevice(adapter, provider, deviceId, { actor, jobs: opts?.jobs });
     return { ok: true, result };
   } catch (e) {
     if (e instanceof BlockServiceError) {
