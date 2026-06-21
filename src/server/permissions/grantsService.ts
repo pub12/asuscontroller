@@ -206,3 +206,15 @@ export async function declineRequest(
   });
   return updated[0] ?? null;
 }
+
+/**
+ * Pure visibility filter — no I/O.
+ * Superadmin sees all rows; other viewers see only their own requests.
+ */
+export function filterVisibleRequests(
+  viewer: { subject: string | null; isSuperadmin: boolean },
+  rows: RequestRow[],
+): RequestRow[] {
+  if (viewer.isSuperadmin) return rows;
+  return rows.filter((row) => row.subject === viewer.subject);
+}

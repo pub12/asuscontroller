@@ -138,6 +138,107 @@ export const syncStatusRoute = defineRoute({
   },
 });
 
+export const grantsListRoute = defineRoute({
+  method: 'GET',
+  path: '/api/grants',
+  summary: 'List permission grants (superadmin only)',
+  responses: {
+    200: {
+      description: 'List of grants, optionally filtered by subject or status',
+      schema: z.object({ grants: z.array(z.any()) }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Superadmin only' },
+  },
+});
+
+export const grantsCreateRoute = defineRoute({
+  method: 'POST',
+  path: '/api/grants',
+  summary: 'Create a permission grant (superadmin only)',
+  responses: {
+    200: {
+      description: 'Newly created or reactivated grant',
+      schema: z.object({ grant: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Superadmin only' },
+    422: { description: 'Invalid request body or unknown capability' },
+  },
+});
+
+export const grantRevokeRoute = defineRoute({
+  method: 'DELETE',
+  path: '/api/grants/{id}',
+  summary: 'Revoke a permission grant by ID (superadmin only)',
+  responses: {
+    200: {
+      description: 'Revoked grant',
+      schema: z.object({ grant: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Superadmin only' },
+    404: { description: 'Grant not found' },
+  },
+});
+
+export const requestsListRoute = defineRoute({
+  method: 'GET',
+  path: '/api/requests',
+  summary: 'List access requests (superadmin sees all; users see own)',
+  responses: {
+    200: {
+      description: 'List of access requests visible to the caller',
+      schema: z.object({ requests: z.array(z.any()) }),
+    },
+    401: { description: 'Not authenticated' },
+  },
+});
+
+export const requestsCreateRoute = defineRoute({
+  method: 'POST',
+  path: '/api/requests',
+  summary: 'Submit an access request for a capability',
+  responses: {
+    200: {
+      description: 'Created request, or noop:true if caller is superadmin',
+      schema: z.object({ request: z.any().nullable(), noop: z.boolean().optional() }),
+    },
+    401: { description: 'Not authenticated' },
+    422: { description: 'Invalid request body or unknown capability' },
+  },
+});
+
+export const requestApproveRoute = defineRoute({
+  method: 'POST',
+  path: '/api/requests/{id}/approve',
+  summary: 'Approve a pending access request (superadmin only)',
+  responses: {
+    200: {
+      description: 'Approved request and the resulting grant',
+      schema: z.object({ request: z.any(), grant: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Superadmin only' },
+    404: { description: 'Request not found or not pending' },
+  },
+});
+
+export const requestDeclineRoute = defineRoute({
+  method: 'POST',
+  path: '/api/requests/{id}/decline',
+  summary: 'Decline a pending access request (superadmin only)',
+  responses: {
+    200: {
+      description: 'Declined request',
+      schema: z.object({ request: z.any() }),
+    },
+    401: { description: 'Not authenticated' },
+    403: { description: 'Superadmin only' },
+    404: { description: 'Request not found' },
+  },
+});
+
 export const ALL_ROUTES = [
   healthRoute,
   meRoute,
@@ -147,4 +248,11 @@ export const ALL_ROUTES = [
   deviceAcknowledgeRoute,
   syncRunRoute,
   syncStatusRoute,
+  grantsListRoute,
+  grantsCreateRoute,
+  grantRevokeRoute,
+  requestsListRoute,
+  requestsCreateRoute,
+  requestApproveRoute,
+  requestDeclineRoute,
 ];

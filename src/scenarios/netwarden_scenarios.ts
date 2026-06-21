@@ -592,6 +592,43 @@ registerScenario('authorize', {
  * Covers: createGrant, duplicate idempotency, createRequest → approveRequest,
  * createRequest → declineRequest, and revokeGrant lifecycle.
  */
+registerScenario('requests_api', {
+  name: 'Permissions — requests submit/approve/decline + filterVisibleRequests',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/requests-test → all request lifecycle + visibility assertions pass',
+    doc: {
+      description: [
+        'Calls /api/requests-test which spins up a throwaway temp SQLite DB and exercises',
+        'the grantsService request helpers and the pure filterVisibleRequests helper.',
+        'Asserts: (submit_ok) createRequest inserts a pending request;',
+        '(approve_creates_grant_ok) approveRequest returns a grant, request status becomes "approved",',
+        'and findActiveGrants now returns the grant;',
+        '(decline_ok) declineRequest sets status "declined", no grant is created;',
+        '(revoke_ok) revokeGrant causes findActiveGrants to no longer return the grant;',
+        '(superadmin_sees_all_ok) filterVisibleRequests with isSuperadmin:true returns ALL rows;',
+        '(user_sees_own_ok) filterVisibleRequests with isSuperadmin:false returns only that user\'s rows.',
+      ].join(' '),
+      inputs: 'GET /api/requests-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp SQLite DB. Zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/requests-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.submit_ok, true);
+      assertEqual(b.approve_creates_grant_ok, true);
+      assertEqual(b.decline_ok, true);
+      assertEqual(b.revoke_ok, true);
+      assertEqual(b.superadmin_sees_all_ok, true);
+      assertEqual(b.user_sees_own_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('grants', {
   name: 'Permissions — grantsService CRUD lifecycle',
   pkg: 'netwarden',
