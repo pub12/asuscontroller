@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-06-21 — Phase 8 — Telemetry vertical (domain insights, fake-first, overnight autonomous)
+Built the full telemetry vertical fake-first: deterministic FakeTelemetryProvider → worker-pure ingest
+core → netwarden.ingest schedule → per-device domain drill-down — all verified against fake data. Live
+NextDnsProvider stays a not-configured stub pending the real-source decision (D14). tsc + next build
+clean; ingest autotest + telemetry_ingest scenario green.
+
+- **Migration 0006:** `app_domain_events.blocked` flag + `app_groups.monitoring_enabled` (DEFAULT 1);
+  applied to the live netwarden.sqlite via the existing seed step.
+- **TelemetryProvider factory:** `TELEMETRY_PROVIDER` / `TELEMETRY_INGEST_SEC` env + async provider
+  factory; FakeTelemetryProvider default; NextDnsProvider lazy-loaded but still a not-configured stub
+  — fake-provider-first per D14.
+- **Deterministic FakeTelemetryProvider** (39 events / 10 devices / 4 blocked) and worker-pure
+  `runTelemetryIngest` core (watermark + half-open `[from,to)` window + composite-PK pre-SELECT dedupe
+  — D16); hermetic `/api/ingest-test` lifecycle proof + `telemetry_ingest` autotest scenario.
+- **netwarden.ingest worker schedule:** idempotent find-or-create, default `*/5` cron; boot one-shot;
+  verified live (inserted 39, re-run fetched 1 / inserted 0 / skipped 1); telemetry-gap ops alert
+  fires on `configured:false`.
+- **Per-device domain drill-down** on Device Detail: top domains + recent lookups + Today/7d toggle +
+  empty states; "Today" = UTC day shared with the presence card above it (D15).
+- **Per-row quick timer** on Devices screen: Clock button per row opens a `QuickTimerDialog` (quick
+  picks + active `TimerBadge` countdown + cancel); entry point separate from the Device Detail
+  `BlockTimerModal`.
+- **Per-group privacy monitoring flag** with read-side gate (D17): superadmin toggle on the Group
+  detail page; `COALESCE(g.monitoring_enabled,1)` check in the drill-down read fn returns an empty
+  monitoring-off result before reading any events; null/no-group defaults to on.
+- **Decisions:** D14–D17 appended to the master_plan trade-off ledger; D6–D13 backfilled as full
+  prose entries in DECISIONS.md.
+
 ## 2026-06-21 — Phase 7 — Timers & Schedules (fake-first, overnight autonomous) + master_plan reconcile
 Built the full Timers & Schedules vertical fake-first: one-shot timers, future-dated one-shots, and
 recurring block/unblock windows — all verified against FakeRouterProvider. Worker fires netwarden.block/

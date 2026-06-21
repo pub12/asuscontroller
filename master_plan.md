@@ -29,7 +29,7 @@ By phase:
 | 5 Permissions | 4 | 4 |
 | 6 Groups & Images | 5 | 5 |
 | 7 Timers & Schedules | 4 | 4 |
-| 8 Telemetry + Drill-down | 0 | 5 |
+| 8 Telemetry + Drill-down | 3 | 6 |
 | 9 Analytics | 0 | 4 |
 | 10 Polish | 2 | 5 |
 | Backlog | 0 | 7 |
@@ -72,11 +72,11 @@ Recount commands:
 - **Phase 7 — Timers & Schedules (done)** — one-shot timers + future-dated + recurring windows + Block-timer modal + Schedules screen — shipped fake-first (AEST, edge-triggered, system-actor fires).
   - Timers — 15m/30m/1h/2h/custom/until-time; one-shot hazo_jobs unblock — `1/1 done`
   - Schedules — recurring/future blocks; app_schedules; modal (screen copy 2); Schedules screen — `3/3 done`
-- **Phase 8 — Telemetry + Drill-down (planned)** — NextDNS provider, ingest/rollup, domain views.
-  - TelemetryProvider — NextDnsProvider (+ Merlin alt, stock fallback) — `0/1 done, 1L left`
-  - Jobs — netwarden.ingest (1–5min); netwarden.rollup (daily) + prune — `0/2 done, 2M left`
-  - Device Domain Views — top domains, recent timeline, first/last seen — `0/1 done, 1M left`
-  - Empty States — hazo_ihelp copy for DoH / no-telemetry — `0/1 done, 1S left`
+- **Phase 8 — Telemetry + Drill-down (done, fake-first)** — full telemetry vertical built + verified vs FakeTelemetryProvider (D14); NextDnsProvider stays a not-configured stub pending source decision.
+  - TelemetryProvider — NextDnsProvider (+ Merlin alt, stock fallback) — `0/1 done, 1L left` (factory + FakeTelemetryProvider shipped; NextDnsProvider stub only — real source undecided)
+  - Jobs — netwarden.ingest (1–5min); netwarden.rollup (daily) + prune — `1/2 done` (ingest done: watermark+dedupe, verified live 39 inserted / re-run deduped; rollup deferred)
+  - Device Domain Views — top domains, recent timeline, first/last seen — `1/1 done` (drill-down on Device Detail; Today/7d UTC-day toggle; D15)
+  - Empty States — hazo_ihelp copy for DoH / no-telemetry — `1/1 done` (monitoring-off empty state; telemetry-gap ops alert; D17)
 - **Phase 9 — Analytics (planned)** — presence time + sessionised estimates + charts.
   - Presence & Estimates — app_device_presence; sessionisation (est. + query count) — `0/2 done, 2M left`
   - Charts — Analytics screen, date range, hazo_dataviz (screen copy / copy 3) — `0/1 done, 1M left`
@@ -171,15 +171,17 @@ Recount commands:
 - [x] (P1)(M) Schedules screen — active & upcoming one-shot + recurring; edit/cancel
 
 ### Phase 8 — Telemetry + Drill-down
+> Built fake-first (vs FakeTelemetryProvider, hermetic ingest-test autotest). NextDnsProvider stays a not-configured stub until the real telemetry source is chosen (D14). netwarden.rollup + hazo_ihelp DoH empty state deferred.
 **TelemetryProvider**
-- [ ] (P1)(L) Productionise TelemetryProvider — NextDnsProvider (+ MerlinSqliteProvider alt, AsusWebHistory fallback), API key via hazo_secure
+- [-] (P1)(L) Productionise TelemetryProvider — NextDnsProvider (+ MerlinSqliteProvider alt, AsusWebHistory fallback), API key via hazo_secure — PARTIAL: async factory + FakeTelemetryProvider (39-event deterministic seed) shipped; NextDnsProvider stub only (real source undecided)
 **Jobs**
-- [ ] (P1)(M) netwarden.ingest job (recurring 1–5 min) → app_domain_events
+- [x] (P1)(M) netwarden.ingest job (recurring 1–5 min) → app_domain_events — watermark + half-open window + composite-PK pre-SELECT dedupe (D16); idempotent find-or-create schedule; boot one-shot; verified live (inserted 39, re-run deduped)
 - [ ] (P1)(M) netwarden.rollup job (daily, off-peak AEST) → app_domain_rollup_daily + app_device_presence; prune raw events past retention
 **Device Domain Views**
-- [ ] (P1)(M) Device domain drill-down — top domains (by query volume), recent-domains timeline, first/last seen
+- [x] (P1)(M) Device domain drill-down — top domains (by query volume), recent-domains timeline, first/last seen — Today/7d UTC-day toggle on Device Detail (D15); per-group monitoring-off read-side gate (D17)
 **Empty States**
-- [ ] (P2)(S) Low-fidelity/empty states (hazo_ihelp) when DoH or no telemetry provider configured
+- [x] (P2)(S) Low-fidelity/empty states when DoH or no telemetry provider configured — monitoring-off empty state on drill-down; telemetry-gap ops alert on configured:false (D17)
+- [ ] (P2)(S) hazo_ihelp copy for DoH / no-telemetry (deferred)
 
 ### Phase 9 — Analytics
 **Presence & Estimates**
@@ -238,6 +240,10 @@ Recount commands:
 | D11 · Fixed AEST (Australia/Sydney) for all schedule evaluation | Per-household timezone | Worker runs with `TZ=Australia/Sydney`; create-time wall-clock ("until 9pm") converted to an absolute instant in AEST (DST-safe via Intl) | Per-household / multi-TZ schedule evaluation | Multi-timezone households appear |
 | D12 · Fire-late on worker downtime | Exactly-on-time fires with catch-up policy | hazo_jobs default: past-due jobs promote to pending on worker restart and fire late; no staleness-skip; reconcile smooths resulting state | Add a staleness-skip / catch-up policy | Surprise late blocks are reported |
 | D13 · Recurring window = two linked rows | First-class window entity | A block-cron row + an unblock-cron row linked via `window_id` (migration 0005), reusing the one-shot/recurring machinery | Promote to a first-class window entity | A first-class window entity is warranted |
+| D14 · Telemetry vertical built fake-provider-first | Wire real NextDNS telemetry now | Full Phase-8 stack (TelemetryProvider iface → FakeTelemetryProvider 39-event deterministic seed → worker-pure runTelemetryIngest → netwarden.ingest worker schedule → per-device domain drill-down UI) built + verified vs a deterministic Fake; NextDnsProvider stays a not-configured stub and drops in unchanged | Swap to NextDnsProvider once the real-source decision (NextDNS vs Merlin SQLite vs ASUS history) unblocks | Real telemetry source chosen + credentials available |
+| D15 · Drill-down "Today" = UTC day | Local (AEST) day | "Today"/"7d" windows use the UTC day (`toISOString().slice(0,10)`), reusing the SAME injected `todayIso` as the presence card directly above it on Device Detail — deliberate consistency; injection keeps a future move to local-day a one-call-site change (for both cards together) | Move presence + domains to local day together | A user-facing "today is wrong" report |
+| D16 · Ingest idempotency = watermark + composite-PK pre-SELECT | Rely on `SELECT changes()` for insert/dup counts | Watermark = `MAX(ts)`; provider queried over a half-open `[from,to)`; dedupe via a deterministic composite PK (`dom_`+mac+ts+domain) using a pre-SELECT existence check (+ `INSERT OR IGNORE` backstop). Chosen because the hazo_connect SQLite adapter doesn't reliably surface mutation row counts (same reason pruneEvents COUNTs-then-DELETEs); verified live (boot ingest inserted 39, re-run fetched 1 / inserted 0 / skipped 1) | — | — |
+| D17 · Per-group monitoring flag = read-side gate | Suppress/delete events at ingest time | `app_groups.monitoring_enabled` (DEFAULT 1); the drill-down read fn checks `COALESCE(g.monitoring_enabled,1)` via the device's primary group and returns an empty monitoring-off result BEFORE reading any events — data still flows into the table but is suppressed on read; null/no group ⇒ on | Ingest-time suppression or a retention purge if a stronger guarantee is needed | A "don't even store it" requirement appears |
 
 > Discipline: log every real trade-off here as it's made — compromise, the ideal, the interim
 > in place, the long-term fix, and the trigger that should make us revisit.

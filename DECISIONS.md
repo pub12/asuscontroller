@@ -81,3 +81,52 @@ app_devices columns are split by writer: the sync job owns router-reported field
 current_ip, last_band, status, first_seen, last_seen) and never clobbers user-owned fields; the API owns
 friendly_name, icon, notes, primary_group_id, and is_new (cleared via acknowledge). Disjoint column sets
 mean a user edit and a concurrent sync tick can't stomp each other.
+
+### 2026-06-21 — D6 · Live router read proven; write corrected + proven
+Read path proven against the real ASUS router (36 clients returned with MAC/IP/band/online). The first
+write attempt via `set_client_state` was a silent no-op — the router returned HTTP 200 but never cut
+traffic, making the initial "proven" claim a false positive. Blocking was re-implemented as a MULTIFILTER
+parental-control write (ENABLE=2 + restart_firewall read-modify-write), and human-confirmed: a real device
+(Google home-kitchen) actually lost then regained internet access. `getBlockState` now reads the live
+MULTIFILTER table. Reboot-survival remains untested.
+
+### 2026-06-21 — D7 · Blocking core built fake-first; live write tightly bounded
+The full block/unblock/reconcile engine — API → blockActions → hazo_state marker → reconcile pass →
+audit outbox → Device Detail — was built and verified entirely against FakeRouterProvider, with hermetic
+temp-DB autotests throughout. The first live write was deliberately bounded to one pinned MAC behind a
+three-layer fail-safe with a 5-minute auto-restore (guarded live-block-test.mjs). Real AsusWrtProvider
+drops in after the supervised spike completes.
+
+### 2026-06-21 — D8 · hazo_state for block desired-state
+A hazo_state CAS + TTL marker holds the intended block state per device, rather than a bespoke lock.
+This prevents double-apply and avoids races between a manual block action and the reconcile pass in the
+sync worker. Revisit if hazo_state TTL expiry or contention surfaces as an issue.
+
+### 2026-06-21 — D9 · hazo_audit outbox + drain in worker
+Every block/unblock mutation writes an audit outbox row rather than calling hazo_audit synchronously on
+the request path. The worker drains via `startAuditWorker.drainOnce()` after each sync tick
+(busy_timeout set, react-server module conditions respected). This avoids react-server boundary issues
+and keeps heavy audit I/O off the request path. Ties to D2 (separate worker process).
+
+### 2026-06-21 — D10 · Schedules = app_schedules + hazo_jobs
+One-shot timers use `jobs.submit({runAt})`; recurring block/unblock windows use
+`jobs.schedules.create({cron})`. Fires run as a SYSTEM actor (audited as schedule-initiated, not
+re-checked per fire) and are edge-triggered: a fire writes app_block_state exactly like a manual action,
+so a manual unblock wins until the next scheduled edge. This is simpler than a continuous-assert window
+model, which is deferred until a requirement for it appears.
+
+### 2026-06-21 — D11 · Fixed AEST for all schedule evaluation
+The worker process runs with `TZ=Australia/Sydney`. A create-time wall-clock expression ("until 9pm") is
+converted to an absolute instant in AEST at creation time, which is DST-safe via Intl. Per-household
+multi-timezone support is deferred; revisit when a multi-timezone household appears.
+
+### 2026-06-21 — D12 · Fire-late on worker downtime
+hazo_jobs default behaviour: past-due jobs promote to pending on worker restart and fire late rather than
+being skipped. No staleness-skip policy is applied; the reconcile pass smooths the resulting device
+state. Accepted for v1; revisit with a catch-up policy if surprise late blocks are reported by users.
+
+### 2026-06-21 — D13 · Recurring window = two linked rows
+A recurring block/unblock window is represented as two rows — a block-cron row and an unblock-cron row —
+linked via a `window_id` column (migration 0005). This reuses the existing one-shot and recurring job
+machinery without introducing a first-class window entity. Promote to a first-class entity if the model
+proves insufficient.
