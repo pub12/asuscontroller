@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "doctor": "node scripts/doctor.mjs",
     "spike:jobs": "node scripts/spike-jobs.mjs",
-    "worker": "node scripts/worker.mjs"
+    "worker": "node --conditions=react-server scripts/worker.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.0",

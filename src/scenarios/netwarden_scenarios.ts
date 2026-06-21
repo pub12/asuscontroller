@@ -350,6 +350,86 @@ registerScenario('block_api', {
   }],
 });
 
+/**
+ * reconcile — drift-reconcile pass in runDeviceSync re-asserts block on the router
+ * when the router has lost the rule. Proves: reapplied counter, router re-blocked,
+ * router_synced updated, audit intent row emitted, and no redundant reapply on
+ * subsequent sync when router is already enforcing the block.
+ */
+registerScenario('reconcile', {
+  name: 'Drift Reconcile — re-apply lost router block rule',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/reconcile-test → drift reapplied, router re-blocked, audit emitted, no redundant reapply',
+    doc: {
+      description: [
+        'Calls /api/reconcile-test which spins up a throwaway temp SQLite DB, inserts device d1',
+        'with an app_block_state row (is_blocked=1, router_synced=1), then forces drift via',
+        'fake.forceBlockState(mac, false) (router "forgot" the block).',
+        'DRIFT case: runDeviceSync re-applies the block (reapplied===1), router is re-blocked',
+        '(getBlockState===true), router_synced is set to 1, and a device_block_reapplied intent',
+        'row is written to hazo_audit_intent.',
+        'NO-DRIFT case: a second runDeviceSync on the already-synced state yields reapplied===0.',
+      ].join(' '),
+      inputs: 'GET /api/reconcile-test — no auth required (test-only route).',
+      expectedOutputs: [
+        'HTTP 200; ok true; all_ok true; reapply_ok, router_reblocked_ok, synced_ok,',
+        'audit_ok, no_redundant_reapply_ok all true.',
+      ].join(' '),
+      caveats: 'Uses a throwaway temp DB; FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/reconcile-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.reapply_ok, true);
+      assertEqual(b.router_reblocked_ok, true);
+      assertEqual(b.synced_ok, true);
+      assertEqual(b.audit_ok, true);
+      assertEqual(b.no_redundant_reapply_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
+/**
+ * audit_drain — full pipeline: block → outbox row → drainOnce → field rows + outbox drained.
+ * Proves the hazo_audit_outbox capture + drain lifecycle end-to-end against a temp DB.
+ */
+registerScenario('audit_drain', {
+  name: 'Audit Drain — outbox capture → drainOnce → field rows',
+  pkg: 'netwarden',
+  cases: [{
+    name: 'GET /api/audit-drain-test → outbox written, drained, field rows present',
+    doc: {
+      description: [
+        'Calls /api/audit-drain-test which spins up a throwaway temp SQLite DB,',
+        'inserts online device d1, calls blockDevice (writes an audit outbox row),',
+        'then startAuditWorker + drainOnce to process it.',
+        'Asserts: (outbox_before_ok) outbox has >=1 row with drained_at null before drain;',
+        '(drain_ok) drainOnce returns processed>=1 and failed===0;',
+        '(field_ok) hazo_audit_field has >=1 row after drain;',
+        '(outbox_drained_ok) every outbox row has non-null drained_at after drain.',
+      ].join(' '),
+      inputs: 'GET /api/audit-drain-test — no auth required (test-only route).',
+      expectedOutputs: 'HTTP 200; ok true; all_ok true; all individual *_ok flags true.',
+      caveats: 'Uses a throwaway temp DB; FakeRouterProvider makes zero network calls.',
+    },
+    run: async () => {
+      const res = await fetch('/api/audit-drain-test');
+      const b = await res.json();
+      assertEqual(res.status, 200);
+      assertEqual(b.ok, true);
+      assertEqual(b.outbox_before_ok, true);
+      assertEqual(b.drain_ok, true);
+      assertEqual(b.field_ok, true);
+      assertEqual(b.outbox_drained_ok, true);
+      assertEqual(b.all_ok, true);
+    },
+  }],
+});
+
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
   pkg: 'netwarden',

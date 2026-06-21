@@ -2,7 +2,9 @@
 // Separate process from the Next app (no instrumentation.ts).
 //
 // Usage:
-//   ROUTER_PROVIDER=fake SYNC_INTERVAL_SEC=60 node scripts/worker.mjs
+//   ROUTER_PROVIDER=fake SYNC_INTERVAL_SEC=60 node --conditions=react-server scripts/worker.mjs
+//
+// NOTE: --conditions=react-server is REQUIRED for the audit drain (hazo_audit/server imports 'server-only').
 //
 // ROUTER_PROVIDER=asus is explicitly blocked — this build has no hardware access.
 
@@ -60,6 +62,7 @@ const Database = (await import('better-sqlite3')).default;
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000');
 
 const adapter = {
   db,
@@ -148,6 +151,20 @@ if (!existing) {
   console.log(`[worker] Reusing existing schedule id=${existing.id} (type=netwarden.sync, cron="${existing.cron ?? cron}")`);
 }
 
+// ── Audit-outbox drain ──────────────────────────────────────────────────────
+// startAuditWorker needs a full hazo_connect adapter (claimRows primitive); the
+// thin adapter above only has raw/rawQuery. Open a 2nd better-sqlite3 connection
+// to the SAME DB (WAL — safe; this worker is single-threaded). REQUIRES launching
+// under `node --conditions=react-server` (hazo_audit/server imports 'server-only').
+const { createHazoConnect } = await import('hazo_connect/server');
+const { startAuditWorker } = await import('hazo_audit/server');
+const auditAdapter = createHazoConnect({
+  type: 'sqlite',
+  sqlite: { database_path: DB_PATH, driver: 'better-sqlite3' },
+});
+await auditAdapter.rawQuery('PRAGMA busy_timeout = 5000', { params: [] });
+const auditWorker = startAuditWorker({ app_adapter: auditAdapter });
+
 // ---------------------------------------------------------------------------
 // Import sync core and provider (dynamic import with .ts extension — Node v25
 // native type-stripping; relative path required, no @/ alias resolution)
@@ -191,6 +208,12 @@ const worker = createWorker({
 const handler = async (job) => {
   const summary = await runDeviceSync(adapter, provider, new Date().toISOString(), { intervalSec });
   console.log('[worker] netwarden.sync processed job', job.id, JSON.stringify(summary));
+  try {
+    const drained = await auditWorker.drainOnce();
+    console.log('[worker] audit drain', JSON.stringify(drained));
+  } catch (err) {
+    console.warn('[worker] audit drain failed (non-fatal):', err?.message ?? err);
+  }
   return summary;
 };
 
@@ -221,6 +244,8 @@ async function shutdown(signal) {
   console.log(`[worker] Received ${signal} — shutting down gracefully...`);
   await worker.stop();
   scheduler.stop();
+  try { await auditWorker.stop(); } catch {}
+  try { if (typeof auditAdapter.close === 'function') auditAdapter.close(); } catch {}
   adapter.close();
   console.log('[worker] Clean shutdown complete.');
   process.exit(0);

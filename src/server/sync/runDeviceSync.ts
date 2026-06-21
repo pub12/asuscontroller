@@ -38,6 +38,7 @@ export interface SyncSummary {
   updated: number;
   went_offline: number;
   presence_minutes_added: number;
+  reapplied: number;
 }
 
 /**
@@ -64,6 +65,7 @@ export async function runDeviceSync(
     updated: 0,
     went_offline: 0,
     presence_minutes_added: 0,
+    reapplied: 0,
   };
 
   // 1. Fetch currently connected clients from the router.
@@ -122,6 +124,55 @@ export async function runDeviceSync(
       summary.inserted++;
       // No presence accrual on initial insert — we have no prior window.
     }
+  }
+
+  // 2.5 Drift reconcile: re-assert desired block state on the router.
+  // Desired state = app_block_state.is_blocked. If the router has lost a block
+  // (reports not-blocked or unknown), re-apply it. Pure SQL + provider calls so
+  // this file stays import-free for the plain-Node worker. Best-effort: a
+  // reconcile failure must never break presence sync.
+  try {
+    const blockedRows = (await adapter.rawQuery(
+      `SELECT b.device_id AS device_id, d.mac AS mac, b.router_synced AS router_synced
+         FROM app_block_state b
+         JOIN app_devices d ON d.id = b.device_id
+        WHERE b.is_blocked = 1`,
+    )) as { device_id: string; mac: string; router_synced: number }[];
+
+    for (const b of blockedRows) {
+      let routerState: boolean | null = null;
+      if (typeof provider.getBlockState === 'function') {
+        routerState = await provider.getBlockState(b.mac);
+      }
+      if (routerState !== true) {
+        // Drift (router not-blocked or unknown) — re-apply the block.
+        const res = await provider.setInternetAccess(b.mac, false);
+        await adapter.rawQuery(
+          `UPDATE app_block_state SET router_synced = ? WHERE device_id = ?`,
+          { params: [res.success ? 1 : 0, b.device_id] },
+        );
+        try {
+          await adapter.rawQuery(
+            `INSERT INTO hazo_audit_intent
+               (id, correlation_id, event_name, payload, subject_kind, subject_id, actor_kind, occurred_at)
+             VALUES (?, ?, 'device_block_reapplied', ?, 'device', ?, 'background_job', ?)`,
+            { params: [crypto.randomUUID(), crypto.randomUUID(),
+                JSON.stringify({ mac: b.mac, router_state: routerState, router_synced: res.success }),
+                b.device_id, nowIso] },
+          );
+        } catch { /* audit is best-effort; the re-block already applied */ }
+        summary.reapplied++;
+      } else if (b.router_synced !== 1) {
+        // Router already enforces the block; just mark us converged.
+        await adapter.rawQuery(
+          `UPDATE app_block_state SET router_synced = 1 WHERE device_id = ?`,
+          { params: [b.device_id] },
+        );
+      }
+    }
+  } catch (err) {
+    // Never let reconcile break the core presence sync.
+    console.warn('[runDeviceSync] reconcile pass failed (non-fatal):', err);
   }
 
   // 3. Offline pass: mark DB-online devices that are absent from this poll.
