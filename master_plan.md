@@ -17,12 +17,12 @@ Last updated: 2026-06-21
 Overall:
 | Done | In progress | Not started | Total | % |
 |---|---|---|---|---|
-| 19 | 5 | 34 | 58 | 33% |
+| 20 | 4 | 34 | 58 | 34% |
 
 By phase:
 | Phase | Done | Total |
 |---|---|---|
-| 1 Feasibility Spike | 3 | 7 |
+| 1 Feasibility Spike | 4 | 7 |
 | 2 Foundations | 8 | 8 |
 | 3 Router + Sync | 3 | 4 |
 | 4 Blocking Core | 5 | 5 |
@@ -41,7 +41,7 @@ Recount commands:
 
 ## Phase Map
 - **Phase 1 — Technical Feasibility Spike (active)** — de-risk router API, telemetry & hazo contracts; go/no-go gate. Throwaway/thin spike, NO production UI.
-  - Router Feasibility — read + write path vs live router, reboot survival — `0/2 done, 2M left`
+  - Router Feasibility — read + write path vs live router, reboot survival — `1/2 done, 1M left` (read path + block/restore write PROVEN live 2026-06-21; reboot-survival open)
   - Telemetry Feasibility — NextDNS per-device attribution + lag — `0/1 done, 1M left`
   - hazo Contracts — jobs / auth / persistence+secrets smoke test — `0/3 done, 3S left`
   - Gate — feasibility report + confirmed-contracts appendix + go/no-go — `0/1 done, 1M left`
@@ -95,8 +95,8 @@ Recount commands:
 
 ### Phase 1 — Technical Feasibility Spike
 **Router Feasibility**
-- [-] (P1)(M) Router read path: AsusWrtProvider.listClients() vs live router — login→asus_token, appGet.cgi get_clientlist(); confirm MAC/IP/hostname/band/online + token expiry — STAGED: AsusWrtProvider draft + spike-router.mjs written, NOT run (no hardware)
-- [-] (P1)(M) Router write path: blockDevice/unblockDevice via applyapp.cgi; verify access cut/restore AND reboot survival — STAGED: set_client_state draft + spike write path written, NOT run; reboot survival open
+- [x] (P1)(M) Router read path: AsusWrtProvider.listClients() vs live router — login→asus_token, appGet.cgi get_clientlist(); confirm MAC/IP/hostname/band/online + token expiry — PROVEN live 2026-06-21: login OK, 36 online clients read with MAC/IP/band/online (target Tablet-kitchen @ 192.168.50.134, 5G); token TTL still assumed 1800s (unverified)
+- [-] (P1)(M) Router write path: blockDevice/unblockDevice via applyapp.cgi; verify access cut/restore AND reboot survival — block→DISABLED & restore→ENABLED PROVEN live 2026-06-21 (set_client_state arity confirmed on real firmware); reboot survival still OPEN (not tested)
 **Telemetry Feasibility**
 - [-] (P1)(M) NextDnsProvider: pull per-device domain events via API, map to MAC (resolveDeviceKey); measure freshness/lag — BLOCKED: provider undecided (NextDNS not set up); stub returns not-configured
 **hazo Contracts**
@@ -217,7 +217,7 @@ Recount commands:
 | Compromise | Ideal | Interim | Long-term fix | Trigger to revisit |
 |---|---|---|---|---|
 | Telemetry provider undecided (NextDNS not set up; stock firmware) | Clean per-device domain telemetry | Provider stubbed "not configured"; Phase 8 blocked | Choose NextDNS (preferred) / Merlin / stock history | Before any telemetry work |
-| Live router spike staged, not run | Contracts proven against real router | Foundations + non-hardware contracts proven; guarded live-block-test.mjs (pinned MAC, three-layer fail-safe, 5-min auto-restore) built + dry-verified vs in-script fake — zero live traffic, NOT yet fired | Supervised spike session | Router + guinea-pig MAC available with a human |
+| ~~Live router spike staged, not run~~ → **FIRED & PASSED 2026-06-21** | Contracts proven against real router | Live-block-test.mjs ran vs real router: login OK, 36 clients read, single-MAC block→DISABLED→restore→ENABLED, exit 0. AsusWrt read+write path proven on live firmware (set_client_state arity confirmed). Reboot-survival still untested | — (read+write done) / supervised reboot test for survival | Reboot-survival check still pending |
 | Reboot-survival unproven | Confirmed block persists across reboot | Documented open item | Run during supervised session | Drives reconcile design in Phase 4 |
 | Unofficial ASUSWRT HTTP endpoints | Official API | RouterProvider adapter isolates churn | Re-eval per firmware | Block path breaks on update |
 | Domain-level telemetry only (no DPI) | Per-URL/app visibility | DNS/SNI domains via NextDNS | Out of scope by design | — |
@@ -229,7 +229,7 @@ Recount commands:
 | D3 · Full device edit + acknowledge now | — (this is the intended UX) | friendly_name/icon/notes/primary_group editable + is_new acknowledge in the Devices screen | — | — |
 | D4 · Capped elapsed-minute presence + immediate offline | Exact connected-time accounting | Presence accrues capped elapsed minutes on consecutive online ticks; offline applied immediately (final-interval undercount accepted) | Finer-grained presence if a use case needs it | Presence accuracy complaint / billing-grade need |
 | D5 · Sync/user field-ownership split | One writer per row | Sync owns router fields; API owns friendly_name/icon/notes/primary_group/is_new — disjoint columns, edit-vs-sync safe | — | — |
-| D6 · Live router read/write unproven vs hardware | Read+write proven against the real ASUS | AsusWrtProvider read+write written and reused on the live path (no hand-mirror); exercised only via Fake; the one live step is the guarded, single-MAC live-block-test.mjs — built + dry-verified but NOT fired | Run the supervised spike on Tablet-kitchen | Hardware + human present (Phase 8) |
+| D6 · Live router read/write — **PROVEN 2026-06-21** | Read+write proven against the real ASUS | AsusWrtProvider read+write fired vs real router via live-block-test.mjs: 36 clients read, single pinned MAC blocked (DISABLED) then restored (ENABLED), exit 0. set_client_state hook arity confirmed on live firmware. Reboot-survival NOT yet tested | Reboot-survival check during a future supervised session | Reboot behaviour matters for reconcile guarantees |
 | D7 · Blocking core built fake-first; live write tightly bounded | Whole block/unblock/reconcile slice proven vs live router | Full engine (API → blockActions → hazo_state marker → reconcile → audit → Device Detail) verified vs FakeRouterProvider; first live write bounded to one pinned MAC with three-layer fail-safe + 5-min auto-restore; reboot-survival still open | Swap to AsusWrtProvider after the spike; verify reboot survival | Supervised spike available |
 | D8 · hazo_state for block desired-state | Bespoke locking | hazo_state CAS + TTL marker holds intended block state to avoid double-apply / racing the reconcile pass | Revisit if hazo_state limits surface | Contention or TTL-expiry issues observed |
 | D9 · hazo_audit outbox + drain in worker | Synchronous audit on the request path | Mutations write an audit outbox row; worker.mjs drains via startAuditWorker.drainOnce after each sync (busy_timeout set, react-server conditions) | Co-locate drain if runtime topology merges | Deploy/runtime model decided (ties to D2) |
