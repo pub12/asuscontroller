@@ -1,6 +1,6 @@
 # NetWarden — Master Plan
 Home-network monitoring & control for an ASUS ZenWiFi AX, built on the hazo_* ecosystem.
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 ## How to use this file
 - Tasks are organized **Phase → Section → task**. Phase = WHEN, Section = WHAT area,
@@ -17,7 +17,7 @@ Last updated: 2026-06-20
 Overall:
 | Done | In progress | Not started | Total | % |
 |---|---|---|---|---|
-| 14 | 5 | 39 | 58 | 24% |
+| 19 | 5 | 34 | 58 | 33% |
 
 By phase:
 | Phase | Done | Total |
@@ -25,7 +25,7 @@ By phase:
 | 1 Feasibility Spike | 3 | 7 |
 | 2 Foundations | 8 | 8 |
 | 3 Router + Sync | 3 | 4 |
-| 4 Blocking Core | 0 | 5 |
+| 4 Blocking Core | 5 | 5 |
 | 5 Permissions | 0 | 4 |
 | 6 Groups & Images | 0 | 5 |
 | 7 Timers & Schedules | 0 | 4 |
@@ -55,11 +55,11 @@ Recount commands:
   - Sync Job — netwarden.sync recurring 60s, presence, new-device detect — `1/1 done` (separate worker process; runDeviceSync core + sync-test)
   - Devices — app_devices model + editable name/icon/notes/group — `1/1 done`
   - Explore (Devices) — searchable list, status chips, group badge — `1/1 done`
-- **Phase 4 — Blocking Core (planned)** — device block/unblock + reconcile + audit.
-  - Block API — device.block/unblock via hazo_api routes — `0/1 done, 1M left`
-  - State & Reconcile — app_block_state + hazo_state CAS; drift reconcile in sync — `0/2 done, 2M left`
-  - Audit — hazo_audit on every mutation; device audit-history view — `0/1 done, 1S left`
-  - Device Detail — access toggle, time-on-device, activity timeline (screen copy 4) — `0/1 done, 1M left`
+- **Phase 4 — Blocking Core (done, fake-first)** — device block/unblock + reconcile + audit; full engine built + verified vs FakeRouterProvider. Live write is the only piece pending the supervised hardware spike (guarded live-block-test.mjs built + dry-verified, not yet fired).
+  - Block API — device.block/unblock via hazo_api routes — `1/1 done` (blockActions + block/unblock routes; devices-list-test green)
+  - State & Reconcile — app_block_state + hazo_state CAS; drift reconcile in sync — `2/2 done` (hazo_state CAS/TTL marker; reconcile re-apply pass in runDeviceSync; reconcile-test green)
+  - Audit — hazo_audit on every mutation; device audit-history view — `1/1 done` (outbox on every mutation + worker drain; audit-drain-test green)
+  - Device Detail — access toggle, time-on-device, activity timeline (screen copy 4) — `1/1 done` (DeviceDetailScreen + getDeviceActivity; device-activity-test green)
 - **Phase 5 — Permissions (planned)** — capability grants + request/approve + admin shell.
   - Grants & Requests — app_user_grants + app_access_requests workflow — `0/2 done, 2M left`
   - Mutation Gating — shared hazo_api guard checks grants server-side — `0/1 done, 1M left`
@@ -131,15 +131,16 @@ Recount commands:
 - [x] (P1)(M) Explore — Devices screen: searchable/filterable list (useDebounce), status chips (online/offline/blocked), group badge — HazoUiTable, status chips, group badge, New-pill acknowledge, edit dialog
 
 ### Phase 4 — Blocking Core
+> Built + verified fake-first (vs FakeRouterProvider, hermetic temp-DB autotests). Live router write is bounded to one pinned MAC behind the guarded live-block-test.mjs and is pending the supervised hardware spike (see ledger D6/D7).
 **Block API**
-- [ ] (P1)(M) device.block / device.unblock through hazo_api routes
+- [x] (P1)(M) device.block / device.unblock through hazo_api routes — blockActions + /api/devices/[id]/block|unblock; superadmin-gated; devices-list-test green
 **State & Reconcile**
-- [ ] (P1)(M) app_block_state + hazo_state reconcile markers (TTL + optimistic CAS to avoid double-apply)
-- [ ] (P1)(M) Drift reconcile in netwarden.sync — compare intended vs router actual, re-apply or flag
+- [x] (P1)(M) app_block_state + hazo_state reconcile markers (TTL + optimistic CAS to avoid double-apply) — hazo_state CAS/TTL desired-state marker; app_block_state PK device_id
+- [x] (P1)(M) Drift reconcile in netwarden.sync — compare intended vs router actual, re-apply or flag — reconcile pass in runDeviceSync re-applies intended blocks (never auto-unblocks); reconcile-test green
 **Audit**
-- [ ] (P1)(S) Audit every mutation via hazo_audit; device audit-history view
+- [x] (P1)(S) Audit every mutation via hazo_audit; device audit-history view — hazo_audit outbox on every mutation + worker drainOnce; timeline in Device Detail; audit-drain-test green
 **Device Detail**
-- [ ] (P1)(M) Device detail screen — access toggle, time-on-device, recent-activity timeline, collapsible audit history (design/screens/screen copy 4.png)
+- [x] (P1)(M) Device detail screen — access toggle, time-on-device, recent-activity timeline, collapsible audit history (design/screens/screen copy 4.png) — DeviceDetailScreen + getDeviceActivity (presence + intent/field timeline); device-activity-test green
 
 ### Phase 5 — Permissions
 **Grants & Requests**
@@ -216,7 +217,7 @@ Recount commands:
 | Compromise | Ideal | Interim | Long-term fix | Trigger to revisit |
 |---|---|---|---|---|
 | Telemetry provider undecided (NextDNS not set up; stock firmware) | Clean per-device domain telemetry | Provider stubbed "not configured"; Phase 8 blocked | Choose NextDNS (preferred) / Merlin / stock history | Before any telemetry work |
-| Live router spike staged, not run | Contracts proven against real router | Foundations + non-hardware contracts proven; scripts ready | Supervised spike session | Router + guinea-pig MAC available with a human |
+| Live router spike staged, not run | Contracts proven against real router | Foundations + non-hardware contracts proven; guarded live-block-test.mjs (pinned MAC, three-layer fail-safe, 5-min auto-restore) built + dry-verified vs in-script fake — zero live traffic, NOT yet fired | Supervised spike session | Router + guinea-pig MAC available with a human |
 | Reboot-survival unproven | Confirmed block persists across reboot | Documented open item | Run during supervised session | Drives reconcile design in Phase 4 |
 | Unofficial ASUSWRT HTTP endpoints | Official API | RouterProvider adapter isolates churn | Re-eval per firmware | Block path breaks on update |
 | Domain-level telemetry only (no DPI) | Per-URL/app visibility | DNS/SNI domains via NextDNS | Out of scope by design | — |
@@ -228,6 +229,11 @@ Recount commands:
 | D3 · Full device edit + acknowledge now | — (this is the intended UX) | friendly_name/icon/notes/primary_group editable + is_new acknowledge in the Devices screen | — | — |
 | D4 · Capped elapsed-minute presence + immediate offline | Exact connected-time accounting | Presence accrues capped elapsed minutes on consecutive online ticks; offline applied immediately (final-interval undercount accepted) | Finer-grained presence if a use case needs it | Presence accuracy complaint / billing-grade need |
 | D5 · Sync/user field-ownership split | One writer per row | Sync owns router fields; API owns friendly_name/icon/notes/primary_group/is_new — disjoint columns, edit-vs-sync safe | — | — |
+| D6 · Live router read/write unproven vs hardware | Read+write proven against the real ASUS | AsusWrtProvider read+write written and reused on the live path (no hand-mirror); exercised only via Fake; the one live step is the guarded, single-MAC live-block-test.mjs — built + dry-verified but NOT fired | Run the supervised spike on Tablet-kitchen | Hardware + human present (Phase 8) |
+| D7 · Blocking core built fake-first; live write tightly bounded | Whole block/unblock/reconcile slice proven vs live router | Full engine (API → blockActions → hazo_state marker → reconcile → audit → Device Detail) verified vs FakeRouterProvider; first live write bounded to one pinned MAC with three-layer fail-safe + 5-min auto-restore; reboot-survival still open | Swap to AsusWrtProvider after the spike; verify reboot survival | Supervised spike available |
+| D8 · hazo_state for block desired-state | Bespoke locking | hazo_state CAS + TTL marker holds intended block state to avoid double-apply / racing the reconcile pass | Revisit if hazo_state limits surface | Contention or TTL-expiry issues observed |
+| D9 · hazo_audit outbox + drain in worker | Synchronous audit on the request path | Mutations write an audit outbox row; worker.mjs drains via startAuditWorker.drainOnce after each sync (busy_timeout set, react-server conditions) | Co-locate drain if runtime topology merges | Deploy/runtime model decided (ties to D2) |
+| getBlockState unknown on stock ASUS firmware | Router reports authoritative per-device block state | getBlockState returns null on stock firmware ⇒ reconcile treats "unknown" as "re-apply intended" (re-applies block, never auto-unblocks) and trusts app_block_state as source of truth | Merlin/JFFS or a firmware that exposes block state | Firmware exposes reliable block-state read |
 
 > Discipline: log every real trade-off here as it's made — compromise, the ideal, the interim
 > in place, the long-term fix, and the trigger that should make us revisit.

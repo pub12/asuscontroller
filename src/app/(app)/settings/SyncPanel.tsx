@@ -12,12 +12,15 @@ interface SyncStatus {
     updated?: number;
     went_offline?: number;
     presence_minutes_added?: number;
+    reapplied?: number;
   } | null;
 }
 
 interface SyncPanelProps {
   providerMode: string;
   intervalSec: number;
+  deviceCount: number;
+  blockedCount: number;
 }
 
 function formatSummary(summary: SyncStatus['summary']): string {
@@ -29,10 +32,11 @@ function formatSummary(summary: SyncStatus['summary']): string {
   if (summary.went_offline != null) parts.push(`${summary.went_offline} went offline`);
   if (summary.presence_minutes_added != null)
     parts.push(`${summary.presence_minutes_added} presence min`);
+  if (summary.reapplied != null) parts.push(`${summary.reapplied} re-applied`);
   return parts.length > 0 ? parts.join(', ') : 'no data';
 }
 
-export function SyncPanel({ providerMode, intervalSec }: SyncPanelProps) {
+export function SyncPanel({ providerMode, intervalSec, deviceCount, blockedCount }: SyncPanelProps) {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -96,6 +100,13 @@ export function SyncPanel({ providerMode, intervalSec }: SyncPanelProps) {
         <div className="flex gap-2">
           <dt className="font-medium text-gray-700">Interval:</dt>
           <dd>{intervalSec}s</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-medium text-gray-700">Devices:</dt>
+          <dd>
+            {deviceCount} known
+            {blockedCount > 0 ? `, ${blockedCount} blocked` : ''}
+          </dd>
         </div>
         <div className="flex gap-2">
           <dt className="font-medium text-gray-700">Last run:</dt>

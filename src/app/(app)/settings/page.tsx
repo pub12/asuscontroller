@@ -1,6 +1,9 @@
 import { resolveServerAuth } from '@/server/auth';
 import { getRouterProviderMode, getSyncIntervalSec } from '@/lib/env';
+import { listDevicesAndGroups } from '@/server/devices/deviceService';
 import { SyncPanel } from './SyncPanel';
+
+export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const { isSuperadmin } = await resolveServerAuth();
@@ -19,6 +22,16 @@ export default async function SettingsPage() {
 
   const providerMode = getRouterProviderMode();
   const intervalSec = getSyncIntervalSec();
+
+  let deviceCount = 0;
+  let blockedCount = 0;
+  try {
+    const { devices } = await listDevicesAndGroups();
+    deviceCount = devices.length;
+    blockedCount = devices.filter((d) => Number(d.is_blocked) === 1).length;
+  } catch {
+    // best-effort — leave counts at 0 if the DB is unavailable
+  }
 
   return (
     <main className="min-h-screen p-6">
@@ -49,7 +62,12 @@ export default async function SettingsPage() {
           <p className="text-sm text-gray-500">Polling interval — placeholder from app config.</p>
         </section>
 
-        <SyncPanel providerMode={providerMode} intervalSec={intervalSec} />
+        <SyncPanel
+          providerMode={providerMode}
+          intervalSec={intervalSec}
+          deviceCount={deviceCount}
+          blockedCount={blockedCount}
+        />
       </div>
     </main>
   );
