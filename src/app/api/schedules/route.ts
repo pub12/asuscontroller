@@ -49,12 +49,15 @@ const ActionEnum = z.enum(['block', 'unblock']);
 // Basic 5-field cron: allow standard 5-field expressions
 const CronField = z.string().min(1).regex(/^\S+\s+\S+\s+\S+\s+\S+\s+\S+$/, 'cron must be a 5-field expression');
 
+// ISO-8601 instant that must be in the future (defense-in-depth on the public API).
+const futureISO = z.string().datetime().refine((s) => new Date(s) > new Date(), 'must be in the future');
+
 const TimerBody = z.object({
   kind: z.literal('timer'),
   targetType: TargetTypeEnum,
   targetId: z.string().min(1),
-  durationMin: z.number().positive().optional(),
-  untilISO: z.string().min(1).optional(),
+  durationMin: z.number().positive().max(43200).optional(),
+  untilISO: futureISO.optional(),
   label: z.string().optional(),
 });
 
@@ -62,8 +65,8 @@ const UnblockTimerBody = z.object({
   kind: z.literal('unblock_timer'),
   targetType: TargetTypeEnum,
   targetId: z.string().min(1),
-  durationMin: z.number().positive().optional(),
-  untilISO: z.string().min(1).optional(),
+  durationMin: z.number().positive().max(43200).optional(),
+  untilISO: futureISO.optional(),
   label: z.string().optional(),
 });
 
@@ -72,7 +75,7 @@ const FutureBody = z.object({
   targetType: TargetTypeEnum,
   targetId: z.string().min(1),
   action: ActionEnum,
-  atISO: z.string().min(1),
+  atISO: futureISO,
   label: z.string().optional(),
 });
 
