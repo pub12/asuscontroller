@@ -37,6 +37,7 @@ import type { DeviceRow } from '@/server/devices/deviceService';
 import type { DeviceActivity, ActivityItem } from '@/server/devices/deviceActivity';
 import type { DomainInsights } from '@/server/telemetry/deviceDomainInsights';
 import { BlockTimerModal } from '@/components/BlockTimerModal';
+import { SchedulePolicyEditor } from '@/components/SchedulePolicyEditor';
 
 // ---------------------------------------------------------------------------
 // Icon map
@@ -324,6 +325,11 @@ export function DeviceDetailScreen({
           </p>
         )}
       </section>
+
+      {/* ---- Recurring schedule ---- */}
+      {isSuperadmin && (
+        <SchedulePolicyEditor targetType="device" targetId={device.id ?? ''} />
+      )}
 
       {/* ---- Time on device ---- */}
       <section>

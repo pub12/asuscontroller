@@ -22,6 +22,7 @@ import {
 import type { GroupRow, DeviceRow } from '@/server/devices/deviceService';
 import type { GroupSummary } from '@/server/groups/groupService';
 import { BlockTimerModal } from '@/components/BlockTimerModal';
+import { SchedulePolicyEditor } from '@/components/SchedulePolicyEditor';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -540,15 +541,18 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
       <section className="rounded-lg border border-border bg-card p-4 space-y-3">
         <h2 className="text-sm font-medium text-foreground">Schedules</h2>
         {isSuperadmin ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowTimerModal(true)}
-            className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
-          >
-            <CalendarClock className="h-4 w-4" />
-            Set timer / Schedule
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTimerModal(true)}
+              className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
+            >
+              <CalendarClock className="h-4 w-4" />
+              Set timer / Schedule
+            </Button>
+            <SchedulePolicyEditor targetType="group" targetId={groupId} />
+          </>
         ) : (
           <p className="text-sm text-muted-foreground">Superadmin required to manage schedules.</p>
         )}

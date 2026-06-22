@@ -33,7 +33,6 @@ import {
   Lock,
   Clock,
   CalendarClock,
-  Repeat2,
 } from 'lucide-react';
 import { Button, HazoUiDialog, successToast, errorToast } from 'hazo_ui';
 
@@ -51,7 +50,7 @@ export interface BlockTimerModalProps {
   isBlocked?: boolean;
 }
 
-type Tab = 'timer' | 'future' | 'recurring';
+type Tab = 'timer' | 'future';
 
 // Duration quick-pick options (minutes)
 const DURATION_PRESETS = [
@@ -61,22 +60,9 @@ const DURATION_PRESETS = [
   { label: '2h', min: 120 },
 ] as const;
 
-const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
-const DAY_FULL = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Build a 5-field cron from days mask + HH:MM. */
-function buildCron(hour: number, minute: number, daysMask: boolean[]): string {
-  const dow = daysMask
-    .map((on, i) => (on ? i : null))
-    .filter((i): i is number => i !== null)
-    .join(',');
-  const dowField = dow === '' ? '*' : dow;
-  return `${minute} ${hour} * * ${dowField}`;
-}
 
 /** HH:MM → { hour, minute } */
 function parseTime(hhmm: string): { hour: number; minute: number } {
@@ -318,177 +304,6 @@ function FuturePanel({
   );
 }
 
-function RecurringPanel({
-  onSubmit,
-  submitting,
-}: {
-  onSubmit: (body: Record<string, unknown>) => void;
-  submitting: boolean;
-}) {
-  // Window mode: pick days + start/end times → creates block+unblock cron pair
-  const [windowEnabled, setWindowEnabled] = useState(true);
-  const [daysMask, setDaysMask] = useState<boolean[]>([false, true, true, true, true, true, false]);
-  const [startTime, setStartTime] = useState('20:00');
-  const [endTime, setEndTime] = useState('07:00');
-
-  // Advanced / standalone cron mode
-  const [advAction, setAdvAction] = useState<'block' | 'unblock'>('block');
-  const [cronExpr, setCronExpr] = useState('0 22 * * 1-5');
-
-  function toggleDay(idx: number) {
-    setDaysMask((prev) => {
-      const next = [...prev];
-      next[idx] = !next[idx]!;
-      return next;
-    });
-  }
-
-  function handleSubmit() {
-    if (windowEnabled) {
-      const noDay = daysMask.every((d) => !d);
-      if (noDay) {
-        errorToast({ title: 'Select at least one day' });
-        return;
-      }
-      const { hour: bh, minute: bm } = parseTime(startTime);
-      const { hour: uh, minute: um } = parseTime(endTime);
-      const blockCron = buildCron(bh, bm, daysMask);
-      const unblockCron = buildCron(uh, um, daysMask);
-      onSubmit({ kind: 'window', blockCron, unblockCron });
-    } else {
-      const cron = cronExpr.trim();
-      const parts = cron.split(/\s+/);
-      if (parts.length !== 5) {
-        errorToast({ title: 'Invalid cron', description: 'Enter a 5-field cron expression (e.g. 0 22 * * 1-5).' });
-        return;
-      }
-      onSubmit({ kind: 'recurring', action: advAction, cron });
-    }
-  }
-
-  return (
-    <div className="space-y-5">
-      <p className="text-sm text-muted-foreground">
-        Set up a repeating block window or standalone recurring action.
-      </p>
-
-      {/* Mode toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Repeat2 className="h-4 w-4 text-primary" />
-          <span className="text-sm font-medium text-foreground">Block window (start + end)</span>
-        </div>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={windowEnabled}
-          onClick={() => setWindowEnabled((v) => !v)}
-          className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ring-offset-background ${
-            windowEnabled ? 'bg-primary' : 'bg-input'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 rounded-full bg-card shadow transition-transform ${
-              windowEnabled ? 'translate-x-5' : 'translate-x-1'
-            }`}
-          />
-        </button>
-      </div>
-
-      {windowEnabled ? (
-        <>
-          {/* Day of week picker */}
-          <div>
-            <div className="flex justify-center gap-2">
-              {DAYS.map((d, i) => (
-                <button
-                  key={`${d}-${i}`}
-                  type="button"
-                  onClick={() => toggleDay(i)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                    daysMask[i]
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                  aria-label={DAY_FULL[i]}
-                  aria-pressed={daysMask[i]}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Start / End times */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start (block)</label>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">End (unblock)</label>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-              />
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Advanced: action + raw cron */}
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action</p>
-            <div className="flex rounded-lg border border-border bg-muted p-1">
-              {(['block', 'unblock'] as const).map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => setAdvAction(a)}
-                  className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${
-                    advAction === a
-                      ? 'bg-card text-primary shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {a.charAt(0).toUpperCase() + a.slice(1)}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cron expression (5-field)</label>
-            <input
-              type="text"
-              value={cronExpr}
-              onChange={(e) => setCronExpr(e.target.value)}
-              placeholder="0 22 * * 1-5"
-              className="w-full rounded-lg border border-border bg-muted px-3 py-2 font-mono text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">e.g. <code>0 22 * * 1-5</code> = weeknights at 10 PM</p>
-          </div>
-        </>
-      )}
-
-      <Button
-        onClick={handleSubmit}
-        disabled={submitting}
-        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl text-base font-semibold"
-      >
-        <Repeat2 className="mr-2 h-4 w-4" />
-        {submitting ? 'Saving…' : 'Save schedule'}
-      </Button>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // BlockTimerModal
 // ---------------------------------------------------------------------------
@@ -496,7 +311,6 @@ function RecurringPanel({
 const TABS: { id: Tab; label: string; Icon: typeof Clock }[] = [
   { id: 'timer', label: 'Timer', Icon: Clock },
   { id: 'future', label: 'Future', Icon: CalendarClock },
-  { id: 'recurring', label: 'Recurring', Icon: Repeat2 },
 ];
 
 export function BlockTimerModal({
@@ -585,9 +399,7 @@ export function BlockTimerModal({
         {tab === 'future' && (
           <FuturePanel onSubmit={handleSubmit} submitting={submitting} />
         )}
-        {tab === 'recurring' && (
-          <RecurringPanel onSubmit={handleSubmit} submitting={submitting} />
-        )}
+
       </div>
     </HazoUiDialog>
   );
