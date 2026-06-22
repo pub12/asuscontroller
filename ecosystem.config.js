@@ -48,7 +48,7 @@ module.exports = {
       node_args: '--conditions=react-server',
       env: {
         NODE_ENV: 'production',
-        TZ: 'Australia/Sydney',
+        TZ: 'Australia/Melbourne',
         // ROUTER_PROVIDER / SYNC_INTERVAL_SEC / router creds come from .env.local.
       },
       autorestart: true,

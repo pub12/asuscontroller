@@ -1,15 +1,15 @@
 /**
  * src/server/schedules/tz.ts
  *
- * AEST (Australia/Sydney) wall-time helpers.
+ * AEST (Australia/Melbourne) wall-time helpers.
  *
- * Uses Intl.DateTimeFormat with timeZone:'Australia/Sydney' to handle DST
+ * Uses Intl.DateTimeFormat with timeZone:'Australia/Melbourne' to handle DST
  * automatically — no manual UTC+10/+11 offset arithmetic.
  *
  * No npm deps; relies only on built-in Intl APIs (Node 20+, all browsers).
  */
 
-const TZ = 'Australia/Sydney';
+export const TZ = 'Australia/Melbourne';
 
 // ---------------------------------------------------------------------------
 // Internal: extract the UTC offset for a given instant in AEST.
