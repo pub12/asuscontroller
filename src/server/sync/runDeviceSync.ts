@@ -230,46 +230,105 @@ export async function runDeviceSync(
   // 'reapply' (worker default): the app is ground truth. If the router has lost
   // a block (reboot, manual change), re-apply it.
   if (blockReconcile === 'reapply') try {
+    const nowMs = Date.parse(nowIso);
+
+    // Build effective-policy map: deviceId -> { rules, tz }. Device-level policy
+    // wins; otherwise the device's primary_group_id group policy applies.
+    const policyRows = (await adapter.rawQuery(
+      `SELECT id, target_type, target_id, tz FROM app_schedule_policies WHERE enabled = 1`,
+    )) as { id: string; target_type: string; target_id: string; tz: string }[];
+    const ruleRows = (await adapter.rawQuery(
+      `SELECT policy_id, weekday, time_min, action FROM app_schedule_rules`,
+    )) as { policy_id: string; weekday: number; time_min: number; action: 'block' | 'unblock' }[];
+    const rulesByPolicy = new Map<string, PolicyRule[]>();
+    for (const r of ruleRows) {
+      const arr = rulesByPolicy.get(r.policy_id) ?? [];
+      arr.push({ weekday: Number(r.weekday), time_min: Number(r.time_min), action: r.action });
+      rulesByPolicy.set(r.policy_id, arr);
+    }
+    const devicePolicy = new Map<string, { rules: PolicyRule[]; tz: string }>();
+    const groupPolicy = new Map<string, { rules: PolicyRule[]; tz: string }>();
+    for (const p of policyRows) {
+      const entry = { rules: rulesByPolicy.get(p.id) ?? [], tz: p.tz || 'Australia/Melbourne' };
+      if (p.target_type === 'device') devicePolicy.set(p.target_id, entry);
+      else groupPolicy.set(p.target_id, entry);
+    }
+    // Resolve effective policy per device that has any state row OR is targeted.
+    const allDevices = (await adapter.rawQuery(
+      `SELECT d.id AS id, d.mac AS mac, d.status AS status, d.primary_group_id AS gid,
+              COALESCE(b.is_blocked,0) AS is_blocked, b.router_synced AS router_synced, b.override_until AS override_until
+         FROM app_devices d LEFT JOIN app_block_state b ON b.device_id = d.id`,
+    )) as { id: string; mac: string; status: string; gid: string | null; is_blocked: number; router_synced: number | null; override_until: string | null }[];
+
+    const policyDeviceIds = new Set<string>();
+
+    for (const d of allDevices) {
+      const eff = devicePolicy.get(d.id) ?? (d.gid ? groupPolicy.get(d.gid) : undefined);
+      if (!eff || eff.rules.length === 0) continue;
+      policyDeviceIds.add(d.id);
+      if (d.status !== 'online') continue; // offline: corrected when it returns
+
+      // Honor an active manual-override hold.
+      if (d.override_until && nowMs < Date.parse(d.override_until)) continue;
+
+      const desired = policyState(eff.rules, nowMs, eff.tz); // 'block' | 'unblock' | null
+      if (!desired) continue;
+      const wantBlocked = desired === 'block';
+      const isBlocked = Number(d.is_blocked) === 1;
+      const overrideExpired = d.override_until != null && nowMs >= Date.parse(d.override_until);
+
+      if (wantBlocked !== isBlocked) {
+        const res = await provider.setInternetAccess(d.mac, !wantBlocked); // enabled=true means unblock
+        const nowIso2 = nowIso;
+        await adapter.rawQuery(
+          `INSERT INTO app_block_state (device_id, is_blocked, blocked_by, blocked_at, router_synced, override_until)
+           VALUES (?, ?, 'schedule', ?, ?, NULL)
+           ON CONFLICT(device_id) DO UPDATE SET
+             is_blocked = excluded.is_blocked, blocked_by = 'schedule',
+             blocked_at = excluded.blocked_at, router_synced = excluded.router_synced, override_until = NULL`,
+          { params: [d.id, wantBlocked ? 1 : 0, nowIso2, res.success ? 1 : 0] },
+        );
+        try {
+          await adapter.rawQuery(
+            `INSERT INTO hazo_audit_intent (id, correlation_id, event_name, payload, subject_kind, subject_id, actor_kind, occurred_at)
+             VALUES (?, ?, 'device_block_scheduled', ?, 'device', ?, 'background_job', ?)`,
+            { params: [crypto.randomUUID(), crypto.randomUUID(), JSON.stringify({ mac: d.mac, desired, router_synced: res.success }), d.id, nowIso] },
+          );
+        } catch { /* audit best-effort */ }
+        summary.reapplied++;
+      } else if (overrideExpired) {
+        // State already matches policy; just clear the stale hold.
+        await adapter.rawQuery(`UPDATE app_block_state SET override_until = NULL WHERE device_id = ?`, { params: [d.id] });
+      }
+    }
+
+    // Legacy re-block-only pass for devices WITHOUT an effective policy.
     const blockedRows = (await adapter.rawQuery(
       `SELECT b.device_id AS device_id, d.mac AS mac, b.router_synced AS router_synced
-         FROM app_block_state b
-         JOIN app_devices d ON d.id = b.device_id
+         FROM app_block_state b JOIN app_devices d ON d.id = b.device_id
         WHERE b.is_blocked = 1`,
     )) as { device_id: string; mac: string; router_synced: number }[];
 
     for (const b of blockedRows) {
+      if (policyDeviceIds.has(b.device_id)) continue; // handled by policy reconcile above
       let routerState: boolean | null = null;
-      if (typeof provider.getBlockState === 'function') {
-        routerState = await provider.getBlockState(b.mac);
-      }
+      if (typeof provider.getBlockState === 'function') routerState = await provider.getBlockState(b.mac);
       if (routerState !== true) {
-        // Drift (router not-blocked or unknown) — re-apply the block.
         const res = await provider.setInternetAccess(b.mac, false);
-        await adapter.rawQuery(
-          `UPDATE app_block_state SET router_synced = ? WHERE device_id = ?`,
-          { params: [res.success ? 1 : 0, b.device_id] },
-        );
+        await adapter.rawQuery(`UPDATE app_block_state SET router_synced = ? WHERE device_id = ?`, { params: [res.success ? 1 : 0, b.device_id] });
         try {
           await adapter.rawQuery(
-            `INSERT INTO hazo_audit_intent
-               (id, correlation_id, event_name, payload, subject_kind, subject_id, actor_kind, occurred_at)
+            `INSERT INTO hazo_audit_intent (id, correlation_id, event_name, payload, subject_kind, subject_id, actor_kind, occurred_at)
              VALUES (?, ?, 'device_block_reapplied', ?, 'device', ?, 'background_job', ?)`,
-            { params: [crypto.randomUUID(), crypto.randomUUID(),
-                JSON.stringify({ mac: b.mac, router_state: routerState, router_synced: res.success }),
-                b.device_id, nowIso] },
+            { params: [crypto.randomUUID(), crypto.randomUUID(), JSON.stringify({ mac: b.mac, router_state: routerState, router_synced: res.success }), b.device_id, nowIso] },
           );
-        } catch { /* audit is best-effort; the re-block already applied */ }
+        } catch { /* audit best-effort */ }
         summary.reapplied++;
       } else if (b.router_synced !== 1) {
-        // Router already enforces the block; just mark us converged.
-        await adapter.rawQuery(
-          `UPDATE app_block_state SET router_synced = 1 WHERE device_id = ?`,
-          { params: [b.device_id] },
-        );
+        await adapter.rawQuery(`UPDATE app_block_state SET router_synced = 1 WHERE device_id = ?`, { params: [b.device_id] });
       }
     }
   } catch (err) {
-    // Never let reconcile break the core presence sync.
     console.warn('[runDeviceSync] reapply reconcile failed (non-fatal):', err);
   }
 
