@@ -5,6 +5,17 @@ import { HazoState } from 'hazo_state/server';
 import { wrapWithAudit, createAuditedCrudService, emitIntentEvent, runWithAuditContext } from 'hazo_audit/server';
 import type { RouterProvider } from '../router/RouterProvider';
 import type { DeviceRow } from './deviceService';
+import { nextTransition } from '@/server/sync/runDeviceSync';
+import { getEnabledPolicyForDevice } from '../schedules/policyService';
+
+// Returns the ISO instant a manual override should hold until (next scheduled
+// transition), or null when the device has no enabled policy.
+async function computeOverrideUntil(adapter: HazoConnectAdapter, deviceId: string): Promise<string | null> {
+  const policy = await getEnabledPolicyForDevice(adapter, deviceId);
+  if (!policy || policy.rules.length === 0) return null;
+  const ms = nextTransition(policy.rules, Date.now(), policy.tz);
+  return ms == null ? null : new Date(ms).toISOString();
+}
 
 const blockKey = (deviceId: string) => `block:${deviceId}`;
 
@@ -69,10 +80,11 @@ export async function blockDevice(
   const auditedAdapter = wrapWithAudit(adapter);
   const auditedBlock = createAuditedCrudService(auditedAdapter, 'app_block_state', { primaryKeys: ['device_id'], autoId: false });
   const now = new Date().toISOString();
+  const overrideUntil = await computeOverrideUntil(adapter, deviceId);
   const row = {
     device_id: deviceId, is_blocked: 1, blocked_by: opts.actor.label, blocked_at: now,
     reason: opts.reason ?? null, scheduled_unblock_at: null, unblock_job_id: null,
-    router_synced: routerSynced ? 1 : 0,
+    router_synced: routerSynced ? 1 : 0, override_until: overrideUntil,
   };
 
   await runWithAuditContext(
@@ -113,9 +125,11 @@ export async function unblockDevice(
 
   const auditedAdapter = wrapWithAudit(adapter);
   const auditedBlock = createAuditedCrudService(auditedAdapter, 'app_block_state', { primaryKeys: ['device_id'], autoId: false });
+  const overrideUntil = await computeOverrideUntil(adapter, deviceId);
   const row = {
     device_id: deviceId, is_blocked: 0, blocked_by: null, blocked_at: null, reason: null,
     scheduled_unblock_at: null, unblock_job_id: null, router_synced: routerSynced ? 1 : 0,
+    override_until: overrideUntil,
   };
 
   await runWithAuditContext(
