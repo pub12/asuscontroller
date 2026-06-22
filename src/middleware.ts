@@ -10,20 +10,26 @@ import { validate_session_cookie } from 'hazo_auth/server/middleware';
  * JWT, so on its own it bounces those users from protected routes even though
  * the pages/API (via hazo_get_auth) consider them logged in.
  *
- * Match by cookie-name SUFFIX rather than reconstructing the prefixed name:
- * the cookies are written server-side with the configured `cookie_prefix`
- * (e.g. `darylweb_`), but the Edge runtime may not have HAZO_AUTH_COOKIE_PREFIX
- * available — a suffix match finds them regardless of prefix availability.
- * This is no weaker than the rest of the app: hazo_get_auth (which guards the
- * actual page/data) already trusts these same cookies.
+ * Match EXACT prefixed cookie names (not a suffix wildcard, which any
+ * `…hazo_auth_user_id`-named cookie could satisfy). The cookies are written
+ * server-side with the configured `cookie_prefix` (`darylweb_`). To stay robust
+ * even if HAZO_AUTH_COOKIE_PREFIX is unavailable in the Edge runtime, check both
+ * the env prefix and the hardcoded `darylweb_` (a non-secret value already in
+ * committed config). This is no weaker than the rest of the app: hazo_get_auth
+ * (which guards the actual page/data) trusts these same cookies and matches the
+ * exact `darylweb_`-prefixed names.
  */
 function hasSimpleAuthCookies(request: NextRequest): boolean {
+  const prefixes = [...new Set([process.env.HAZO_AUTH_COOKIE_PREFIX, 'darylweb_'].filter(Boolean))];
+  const userIdNames = prefixes.map((p) => `${p}hazo_auth_user_id`);
+  const userEmailNames = prefixes.map((p) => `${p}hazo_auth_user_email`);
+
   let hasUserId = false;
   let hasUserEmail = false;
   for (const { name, value } of request.cookies.getAll()) {
     if (!value) continue;
-    if (name.endsWith('hazo_auth_user_id')) hasUserId = true;
-    else if (name.endsWith('hazo_auth_user_email')) hasUserEmail = true;
+    if (userIdNames.includes(name)) hasUserId = true;
+    else if (userEmailNames.includes(name)) hasUserEmail = true;
   }
   return hasUserId && hasUserEmail;
 }
