@@ -2,6 +2,7 @@ import { ok, fail, withRequestContext } from 'hazo_api';
 import { z } from 'zod';
 import { resolveServerAuth } from '@/server/auth';
 import { getDb } from '@/server/db';
+import { authorizeCapability } from '@/server/permissions/authorize';
 import { setPolicyEnabled, deletePolicy, clearOverrideForTarget } from '@/server/schedules/policyService';
 
 type RawAdapter = { rawQuery(sql: string, opts?: { params?: unknown[] }): Promise<any[]> };
@@ -31,6 +32,9 @@ export const PATCH = withRequestContext(async (req: Request, ctx: { params: Prom
   const adapter = getDb();
   const t = await targetOf(adapter as unknown as RawAdapter, id);
   if (!t) return fail('NOT_FOUND', 'Policy not found');
+  const patchTarget = t.target_type === 'device' ? { deviceId: t.target_id } : { scopeType: 'group' as const, scopeId: t.target_id };
+  const patchDecision = await authorizeCapability(adapter, { subject: auth.subject, isSuperadmin: auth.isSuperadmin }, 'schedule.create', patchTarget);
+  if (!patchDecision.allowed) return fail('FORBIDDEN', patchDecision.reason);
   await setPolicyEnabled(adapter, id, parsed.data.enabled);
   if (!parsed.data.enabled) await clearOverrideForTarget(adapter, t.target_type, t.target_id);
   return ok({ id, enabled: parsed.data.enabled });
@@ -43,6 +47,9 @@ export const DELETE = withRequestContext(async (_req: Request, ctx: { params: Pr
   const adapter = getDb();
   const t = await targetOf(adapter as unknown as RawAdapter, id);
   if (!t) return fail('NOT_FOUND', 'Policy not found');
+  const delTarget = t.target_type === 'device' ? { deviceId: t.target_id } : { scopeType: 'group' as const, scopeId: t.target_id };
+  const delDecision = await authorizeCapability(adapter, { subject: auth.subject, isSuperadmin: auth.isSuperadmin }, 'schedule.create', delTarget);
+  if (!delDecision.allowed) return fail('FORBIDDEN', delDecision.reason);
   await deletePolicy(adapter, id);
   await clearOverrideForTarget(adapter, t.target_type, t.target_id);
   return ok({ id, deleted: true });
