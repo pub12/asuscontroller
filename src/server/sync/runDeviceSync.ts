@@ -29,6 +29,89 @@ type SyncAdapter = {
 };
 
 // ---------------------------------------------------------------------------
+// Pure schedule engine (co-located here, NOT in a separate module, because this
+// file is imported by the plain-Node worker under native type-stripping which
+// forbids external value imports / .ts extensions — see file header).
+//
+// Weekday convention: 0=Mon .. 6=Sun. time_min: 0..1439 local minutes.
+// DST-correct: each candidate transition is materialized as a concrete UTC
+// instant from its local wall time using the tz offset AT THAT DATE.
+// ---------------------------------------------------------------------------
+
+export interface PolicyRule {
+  weekday: number;            // 0=Mon .. 6=Sun
+  time_min: number;           // 0..1439
+  action: 'block' | 'unblock';
+}
+
+const POLICY_TZ = 'Australia/Melbourne';
+
+// Local-time parts of an instant in a given tz.
+function tzParts(ms: number, tz: string): { y: number; mo: number; d: number; weekday: number } {
+  const fmt = new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz, weekday: 'short',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour12: false,
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  const wkMap: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+  return {
+    y: parseInt(p.year, 10), mo: parseInt(p.month, 10), d: parseInt(p.day, 10),
+    weekday: wkMap[p.weekday as string],
+  };
+}
+
+// UTC offset (ms) for an instant in tz (positive = ahead of UTC).
+function tzOffsetMs(ms: number, tz: string): number {
+  const fmt = new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date(ms)).map((x) => [x.type, x.value]));
+  const asUtc = Date.UTC(
+    parseInt(p.year, 10), parseInt(p.month, 10) - 1, parseInt(p.day, 10),
+    parseInt(p.hour, 10), parseInt(p.minute, 10), parseInt(p.second, 10),
+  );
+  return asUtc - ms;
+}
+
+// Concrete UTC instant (ms) for a given local wall time on a specific calendar date.
+function wallToUtcMs(y: number, mo: number, d: number, minutes: number, tz: string): number {
+  const naiveUtc = Date.UTC(y, mo - 1, d, Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return naiveUtc - tzOffsetMs(naiveUtc, tz);
+}
+
+// Materialize sorted {ms, action} transition instants across [fromMs, fromMs + days*86400000].
+function materialize(rules: PolicyRule[], fromMs: number, days: number, tz: string): { ms: number; action: 'block' | 'unblock' }[] {
+  const out: { ms: number; action: 'block' | 'unblock' }[] = [];
+  for (let i = 0; i <= days; i++) {
+    const dayMs = fromMs + i * 86_400_000;
+    const { y, mo, d, weekday } = tzParts(dayMs, tz);
+    for (const r of rules) {
+      if (r.weekday !== weekday) continue;
+      out.push({ ms: wallToUtcMs(y, mo, d, r.time_min, tz), action: r.action });
+    }
+  }
+  out.sort((a, b) => a.ms - b.ms);
+  return out;
+}
+
+export function policyState(rules: PolicyRule[], nowMs: number, tz: string = POLICY_TZ): 'block' | 'unblock' | null {
+  if (rules.length === 0) return null;
+  // Look back up to 8 days for the most recent transition at-or-before now.
+  const pts = materialize(rules, nowMs - 8 * 86_400_000, 9, tz);
+  let last: 'block' | 'unblock' | null = null;
+  for (const p of pts) { if (p.ms <= nowMs) last = p.action; else break; }
+  return last;
+}
+
+export function nextTransition(rules: PolicyRule[], nowMs: number, tz: string = POLICY_TZ): number | null {
+  if (rules.length === 0) return null;
+  const pts = materialize(rules, nowMs - 86_400_000, 9, tz);
+  for (const p of pts) { if (p.ms > nowMs) return p.ms; }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
