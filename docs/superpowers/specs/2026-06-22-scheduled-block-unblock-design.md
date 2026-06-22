@@ -1,7 +1,7 @@
 # Recurring block/unblock schedules with manual override
 
 **Date:** 2026-06-22
-**Status:** Approved — ready for implementation plan
+**Status:** Implemented — 2026-06-22
 
 ## Goal
 
@@ -198,3 +198,7 @@ migrate.
 - One policy per target; **device-level overrides group-level**.
 - No live recurring/window schedules to migrate — safe to replace the old
   engine.
+
+## Deviations from spec
+
+**Deviations from spec:** The pure schedule engine (`policyState`/`nextTransition`) is co-located in `runDeviceSync.ts` rather than a standalone `policyEngine.ts`, because the worker imports that file under native Node.js type-stripping which forbids external value imports. Functionally identical.
