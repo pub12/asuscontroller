@@ -119,10 +119,10 @@ function targetLabel(row: ScheduleRow): string {
 // ---------------------------------------------------------------------------
 function StatusBadge({ status }: { status: ScheduleRow['status'] }) {
   const map: Record<ScheduleRow['status'], { label: string; cls: string }> = {
-    active:    { label: 'Active',    cls: 'bg-green-100 text-green-700' },
-    paused:    { label: 'Paused',    cls: 'bg-amber-100 text-amber-700' },
-    done:      { label: 'Done',      cls: 'bg-gray-100 text-gray-500'   },
-    cancelled: { label: 'Cancelled', cls: 'bg-red-100 text-red-500'     },
+    active:    { label: 'Active',    cls: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' },
+    paused:    { label: 'Paused',    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400' },
+    done:      { label: 'Done',      cls: 'bg-muted text-muted-foreground'   },
+    cancelled: { label: 'Cancelled', cls: 'bg-red-100 text-red-500 dark:bg-red-500/15 dark:text-red-400'     },
   };
   const { label, cls } = map[status] ?? map.active;
   return (
@@ -138,10 +138,10 @@ function StatusBadge({ status }: { status: ScheduleRow['status'] }) {
 function SectionHeader({ icon: Icon, title, count }: { icon: typeof Clock; title: string; count: number }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="h-4 w-4 text-teal-700" />
-      <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+      <Icon className="h-4 w-4 text-primary" />
+      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       {count > 0 && (
-        <span className="ml-auto rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+        <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {count}
         </span>
       )}
@@ -173,29 +173,29 @@ function ScheduleCard({
   );
 
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3">
+    <div className="flex items-start gap-3 rounded-lg border border-border bg-card p-3">
       {/* Action icon */}
       <span className="mt-0.5 flex-shrink-0">{actionIcon}</span>
 
       {/* Info */}
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="truncate text-sm font-medium text-gray-800">
+        <p className="truncate text-sm font-medium text-foreground">
           {row.label ?? (row.action === 'block' ? 'Block' : 'Unblock')}
         </p>
-        <p className="text-xs text-gray-500">{targetLabel(row)}</p>
+        <p className="text-xs text-muted-foreground">{targetLabel(row)}</p>
         {isRecurring ? (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             cron: <code className="font-mono">{row.cron}</code>
             {row.next_run_at && (
               <span className="ml-1">&middot; next {formatDateTime(row.next_run_at)}</span>
             )}
           </p>
         ) : (
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-muted-foreground">
             {row.run_at && (
               <>
                 {formatDateTime(row.run_at)}
-                <span className="ml-1 text-teal-600">({timeUntil(row.run_at)})</span>
+                <span className="ml-1 text-primary">({timeUntil(row.run_at)})</span>
               </>
             )}
           </p>
@@ -261,11 +261,11 @@ function WindowCard({
   const allCancelled = blockRow.status === 'cancelled' && unblockRow.status === 'cancelled';
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 space-y-2">
+    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-teal-700" />
-          <p className="text-sm font-medium text-gray-800 truncate">
+          <Layers className="h-4 w-4 text-primary" />
+          <p className="text-sm font-medium text-foreground truncate">
             {win.label ?? 'Block window'}
           </p>
         </div>
@@ -308,7 +308,7 @@ function WindowCard({
           { row: blockRow, verb: 'Block' },
           { row: unblockRow, verb: 'Unblock' },
         ].map(({ row, verb }) => (
-          <div key={row.id} className="flex items-center gap-2 text-xs text-gray-500">
+          <div key={row.id} className="flex items-center gap-2 text-xs text-muted-foreground">
             {verb === 'Block' ? (
               <Ban className="h-3 w-3 text-red-400" />
             ) : (
@@ -316,12 +316,12 @@ function WindowCard({
             )}
             <code className="font-mono">{row.cron}</code>
             {row.next_run_at && (
-              <span className="text-gray-400">&middot; next {formatDateTime(row.next_run_at)}</span>
+              <span className="text-muted-foreground">&middot; next {formatDateTime(row.next_run_at)}</span>
             )}
             <StatusBadge status={row.status} />
           </div>
         ))}
-        <p className="text-xs text-gray-400">{targetLabel(blockRow)}</p>
+        <p className="text-xs text-muted-foreground">{targetLabel(blockRow)}</p>
       </div>
     </div>
   );
@@ -423,7 +423,7 @@ export function SchedulesScreen() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Schedules</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Schedules</h1>
         <Button
           variant="outline"
           size="sm"
@@ -438,7 +438,7 @@ export function SchedulesScreen() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
@@ -537,7 +537,7 @@ export function SchedulesScreen() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-lg border border-gray-200 bg-gray-100"
+              className="h-16 animate-pulse rounded-lg border border-border bg-muted"
             />
           ))}
         </div>
@@ -545,11 +545,11 @@ export function SchedulesScreen() {
 
       {/* Helper tip */}
       {!loading && !error && (
-        <div className="flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <Calendar className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal-700" />
-          <p className="text-xs text-gray-500">
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted p-3">
+          <Calendar className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+          <p className="text-xs text-muted-foreground">
             To add a schedule, open a device or group and tap{' '}
-            <span className="font-medium text-gray-700">Set timer / Schedule</span>.
+            <span className="font-medium text-foreground">Set timer / Schedule</span>.
           </p>
         </div>
       )}

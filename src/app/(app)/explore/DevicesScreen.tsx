@@ -119,7 +119,7 @@ function StatusChip({ status }: { status: string | undefined }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-        online ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+        online ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' : 'bg-muted text-muted-foreground'
       }`}
     >
       <Icon className="h-3 w-3" />
@@ -133,7 +133,7 @@ function StatusChip({ status }: { status: string | undefined }) {
 // ---------------------------------------------------------------------------
 function BlockedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-400">
       <Ban className="h-3 w-3" />
       Blocked
     </span>
@@ -145,7 +145,7 @@ function BlockedBadge() {
 // ---------------------------------------------------------------------------
 function ThisDeviceBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-500/15 dark:text-blue-400">
       <MapPin className="h-3 w-3" />
       This device
     </span>
@@ -156,9 +156,9 @@ function ThisDeviceBadge() {
 // Group badge
 // ---------------------------------------------------------------------------
 function GroupBadge({ group }: { group: GroupRow | undefined }) {
-  if (!group) return <span className="text-gray-400">—</span>;
+  if (!group) return <span className="text-muted-foreground">—</span>;
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700">
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-0.5 text-xs font-medium text-foreground">
       {group.color && (
         <span
           className="inline-block h-2 w-2 rounded-full"
@@ -192,7 +192,7 @@ function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium transition-colors ${colorClass} ${
-        active ? activeClass : 'hover:bg-gray-100'
+        active ? activeClass : 'hover:bg-muted'
       }`}
     >
       {children}
@@ -249,7 +249,7 @@ function TimerBadge({
   // action is what happens WHEN the timer fires.
   const verb = timer.action === 'block' ? 'blocks' : 'unblocks';
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
       <Clock className="h-3 w-3" />
       {verb} in {formatLeft(timer.run_at, nowMs)}
       <button
@@ -336,7 +336,7 @@ function QuickTimerDialog({
       sizeWidth="420px"
     >
       <div className="space-y-4 p-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           {blocked
             ? 'Unblocks now and automatically re-blocks after the selected time.'
             : 'Blocks now and automatically unblocks after the selected time.'}
@@ -351,8 +351,8 @@ function QuickTimerDialog({
                 onClick={() => setPreset(min)}
                 className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
                   active
-                    ? 'border-teal-700 bg-teal-700 text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-teal-600 hover:text-teal-700'
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-card text-foreground hover:border-primary hover:text-primary'
                 }`}
               >
                 {label}
@@ -364,8 +364,8 @@ function QuickTimerDialog({
             onClick={() => setPreset('custom')}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
               preset === 'custom'
-                ? 'border-teal-700 bg-teal-700 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-teal-600 hover:text-teal-700'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-card text-foreground hover:border-primary hover:text-primary'
             }`}
           >
             Custom
@@ -378,9 +378,9 @@ function QuickTimerDialog({
               min={1}
               value={customMin}
               onChange={(e) => setCustomMin(e.target.value)}
-              className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+              className="w-24 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <span className="text-sm text-gray-500">minutes</span>
+            <span className="text-sm text-muted-foreground">minutes</span>
           </div>
         )}
       </div>
@@ -451,7 +451,7 @@ function EditDialog({
     >
       <div className="space-y-4 p-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Friendly name</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Friendly name</label>
           <Input
             value={friendlyName}
             onChange={(e) => setFriendlyName(e.target.value)}
@@ -460,7 +460,7 @@ function EditDialog({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Icon</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Icon</label>
           <Select value={icon} onValueChange={setIcon}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select icon" />
@@ -476,7 +476,7 @@ function EditDialog({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Notes</label>
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -486,7 +486,7 @@ function EditDialog({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Group</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Group</label>
           <Select value={groupId} onValueChange={setGroupId}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="— none —" />
@@ -519,7 +519,7 @@ function GroupCard({
   const initial = (group.name ?? '?').charAt(0).toUpperCase();
 
   return (
-    <div className="relative flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+    <div className="relative flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
       {/* Clickable area → group detail */}
       <Link href={`/explore/groups/${group.id ?? ''}`} className="flex flex-col items-center gap-2 p-4 pb-2 flex-1">
         {/* Avatar */}
@@ -539,18 +539,18 @@ function GroupCard({
         )}
 
         {/* Name */}
-        <span className="text-sm font-medium text-gray-900 text-center leading-tight">
+        <span className="text-sm font-medium text-foreground text-center leading-tight">
           {group.name ?? group.id}
         </span>
 
         {/* Online count */}
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted-foreground">
           {group.onlineCount} of {group.memberCount} online
         </span>
 
         {/* Blocked pill */}
         {group.isBlocked && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-400">
             <Ban className="h-3 w-3" />
             Blocked
           </span>
@@ -563,8 +563,8 @@ function GroupCard({
           onClick={() => onBlock(group, group.isBlocked ? 'unblock' : 'block')}
           className={`w-full rounded-lg py-2 text-sm font-medium transition-colors ${
             group.isBlocked
-              ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              : 'bg-teal-700 text-white hover:bg-teal-800'
+              ? 'bg-muted text-foreground hover:bg-muted/80'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
           }`}
         >
           {group.isBlocked ? 'Unblock all' : 'Block all'}
@@ -586,7 +586,7 @@ function GroupsGrid({
 }) {
   if (groupSummaries.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 p-6">
+      <div className="rounded-lg border border-border p-6">
         <EmptyState title="No groups yet" description="Create groups to organise your devices." />
       </div>
     );
@@ -657,12 +657,12 @@ function RequestAccessDialog({
       sizeWidth="420px"
     >
       <div className="space-y-4 p-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           You don&apos;t have permission to {state?.capability === 'group.block' ? 'block' : 'unblock'} this group.
           Submit a request and a superadmin will review it.
         </p>
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Note (optional)</label>
           <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -680,7 +680,15 @@ function RequestAccessDialog({
 export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, currentDeviceId }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const TAB_STORAGE_KEY = 'darylweb:explore:tab';
   const [tab, setTab] = useState<Tab>('devices');
+  useEffect(() => {
+    const saved = localStorage.getItem(TAB_STORAGE_KEY);
+    if (saved === 'devices' || saved === 'groups') setTab(saved);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  }, [tab]);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [confirmBlock, setConfirmBlock] = useState<DeviceRow | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -906,8 +914,8 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
         const timer = d.id ? deviceTimers.get(d.id) : undefined;
         return (
           <span className="flex items-center gap-2">
-            <IconComp className="h-4 w-4 flex-shrink-0 text-gray-400" />
-            <span className="font-medium text-gray-800">{deviceDisplayName(d)}</span>
+            <IconComp className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+            <span className="font-medium text-foreground">{deviceDisplayName(d)}</span>
             {currentDeviceId && d.id === currentDeviceId && <ThisDeviceBadge />}
             {!!d.is_blocked && <BlockedBadge />}
             {timer && (
@@ -936,10 +944,10 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
       key: 'current_ip',
       label: 'IP / Band',
       cell: (d) => (
-        <span className="text-sm text-gray-700">
+        <span className="text-sm text-foreground">
           {d.current_ip ?? '—'}
           {d.last_band && (
-            <span className="ml-1 text-xs text-gray-400">{d.last_band}</span>
+            <span className="ml-1 text-xs text-muted-foreground">{d.last_band}</span>
           )}
         </span>
       ),
@@ -1021,7 +1029,7 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
     <div className="space-y-6">
       {/* Page heading */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Explore</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Explore</h1>
         <Button
           variant="outline"
           size="sm"
@@ -1035,15 +1043,15 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
       </div>
 
       {/* Tab toggle */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
+      <div className="flex gap-1 rounded-lg border border-border bg-muted p-1 w-fit">
         {(['devices', 'groups'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
               tab === t
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -1058,14 +1066,14 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
           onBlock={(g, action) => { void handleGroupBlock(g, action); }}
         />
       ) : (
-        <div className="rounded-lg border border-gray-200">
+        <div className="rounded-lg border border-border">
           {/* Device counter — labels double as status filters */}
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-gray-100 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-b border-border px-3 py-2">
             <FilterChip
               active={effectiveFilter === 'all'}
               onClick={() => setStatusFilter('all')}
-              colorClass="text-gray-800"
-              activeClass="bg-gray-200 text-gray-900"
+              colorClass="text-foreground"
+              activeClass="bg-muted text-foreground"
             >
               {total} {total === 1 ? 'device' : 'devices'}
             </FilterChip>
@@ -1081,8 +1089,8 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
             <FilterChip
               active={effectiveFilter === 'offline'}
               onClick={() => toggleFilter('offline')}
-              colorClass="text-gray-500"
-              activeClass="bg-gray-200 text-gray-700"
+              colorClass="text-muted-foreground"
+              activeClass="bg-muted text-foreground"
             >
               <WifiOff className="h-3.5 w-3.5" />
               {total - onlineCount} offline
@@ -1160,7 +1168,7 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
           onCancel={() => setConfirmBlock(null)}
           sizeWidth="420px"
         >
-          <div className="p-4 text-sm text-gray-600">
+          <div className="p-4 text-sm text-muted-foreground">
             This cuts internet access for this device at the router. You can unblock it again at any time.
           </div>
         </HazoUiDialog>
@@ -1176,7 +1184,7 @@ export function DevicesScreen({ devices, groups, groupSummaries, isSuperadmin, c
       {tab === 'groups' && isSuperadmin && (
         <Link
           href="/explore/groups/new"
-          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-white shadow-lg hover:bg-teal-800 transition-colors z-10"
+          className="fixed bottom-24 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors z-50"
           aria-label="Create group"
         >
           <Plus className="h-6 w-6" />

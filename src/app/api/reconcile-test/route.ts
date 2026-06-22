@@ -38,7 +38,7 @@ export async function GET() {
 
   const tmpDb = path.join(
     os.tmpdir(),
-    `netwarden_reconcile_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
+    `darylweb_reconcile_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
   );
 
   try {

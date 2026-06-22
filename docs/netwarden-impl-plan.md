@@ -1,4 +1,4 @@
-# NetWarden — Implementation Plan: Foundations + Staged Spike
+# DarylWeb — Implementation Plan: Foundations + Staged Spike
 
 Prereqs: this is NOT a git repo yet → **git init** first. Commit per item (boundaries below).
 Run the dev server via scripts/next.mjs (never `next dev` directly). HAZO_ENV=development.
@@ -6,7 +6,7 @@ Each item's DoD: `next build` passes + typecheck/lint clean + its /autotest case
 
 ### Step 0 — Docs + repo init  [commit: chore: init repo + handoff docs]
 - git init; add .gitignore (node_modules, .next, *.sqlite, .env*, !.env.example).
-- Write docs/netwarden-spec.md and docs/netwarden-impl-plan.md from the embedded artifacts.
+- Write docs/darylweb-spec.md and docs/darylweb-impl-plan.md from the embedded artifacts.
 
 ### HEADLINER — Phase 2 Foundations spine (ordered)
 
@@ -18,7 +18,7 @@ Each item's DoD: `next build` passes + typecheck/lint clean + its /autotest case
    - postcss.config.mjs (@tailwindcss/postcss); src/app/globals.css with @import "tailwindcss";
      @import "tw-animate-css"; one @source "../../node_modules/hazo_*/dist" per used package.
    - src/app/layout.tsx wraps children in HazoContextProvider (hazo_ui).
-   - scripts/next.mjs launcher; src/app/autotest/page.tsx (AutoTestProvider pkg="netwarden" + AutoTestRunner).
+   - scripts/next.mjs launcher; src/app/autotest/page.tsx (AutoTestProvider pkg="darylweb" + AutoTestRunner).
    - DoD: app boots via scripts/next.mjs; / renders; /autotest loads empty harness; build passes.
 
 2. **Full-schema migrations**  [feat: hazo_connect migrations for all app_ tables]

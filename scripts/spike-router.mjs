@@ -146,7 +146,7 @@ async function login(host, user, pass) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'NetWarden-spike/0.1',
+        'User-Agent': 'DarylWeb-spike/0.1',
         Referer: `http://${host}/`,
       },
       body: body.toString(),
@@ -206,7 +206,7 @@ async function getClientList(host, token) {
       method: 'GET',
       headers: {
         Cookie: `asus_token=${token}`,
-        'User-Agent': 'NetWarden-spike/0.1',
+        'User-Agent': 'DarylWeb-spike/0.1',
         Referer: `http://${host}/`,
       },
     });
@@ -354,7 +354,7 @@ async function setClientState(host, token, mac, enabled) {
       headers: {
         Cookie: `asus_token=${token}`,
         'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'NetWarden-spike/0.1',
+        'User-Agent': 'DarylWeb-spike/0.1',
         Referer: `http://${host}/`,
       },
       body: body.toString(),

@@ -1,5 +1,5 @@
 /**
- * src/server/secrets.ts — Server-only secret accessors for NetWarden.
+ * src/server/secrets.ts — Server-only secret accessors for DarylWeb.
  *
  * Uses LookupSecretsProvider (hazo_secure/secrets) so we read plain env var
  * names (ROUTER_HOST, ROUTER_USER, etc.) without requiring the HAZO_SECRET_

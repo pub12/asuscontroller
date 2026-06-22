@@ -1,9 +1,9 @@
 # Decisions
 
 ### 2026-06-20 — Reuse the hazo_* ecosystem over bespoke infrastructure
-NetWarden is a consuming app: identity, persistence, jobs, audit, secrets, files, charts,
+DarylWeb is a consuming app: identity, persistence, jobs, audit, secrets, files, charts,
 admin shell, UI all come from existing hazo_* packages. Own code is limited to RouterProvider,
-TelemetryProvider, block/reconcile logic, and NetWarden screens.
+TelemetryProvider, block/reconcile logic, and DarylWeb screens.
 
 ### 2026-06-20 — Feasibility-first phasing with a hard go/no-go gate
 Phase 1 is a throwaway/thin spike proving the unofficial ASUSWRT control path, telemetry
@@ -26,7 +26,7 @@ Per-device per-domain blocking is deferred to Backlog (DNS layer). Redesigned sc
 v1 scope; earlier out-of-scope UI (packet inspection, content filtering, network.reboot) removed.
 
 ### 2026-06-20 — Built as an external consuming app of published hazo_* packages
-NetWarden installs hazo_* from npm (not a workspace member): `src/app/` App Router, next.config
+DarylWeb installs hazo_* from npm (not a workspace member): `src/app/` App Router, next.config
 transpilePackages, webpack stubs for unused peers (next-auth). Decouples our release cadence from
 the libraries; the cost is reconciling real published APIs vs assumed signatures (logged as build
 deviations). See docs/phase1-feasibility-report.md.
@@ -39,7 +39,7 @@ a single-tenant home app on SQLite.
 ### 2026-06-20 — First superadmin via SUPERADMIN_EMAIL env var
 The first superadmin is provisioned from the SUPERADMIN_EMAIL env var (login-time idempotent grant
 through the hazo_auth role/scope chain), avoiding a hardcoded admin or manual DB seeding. Superadmin =
-hazo_auth permission `netwarden:nw:superadmin`; finer capabilities stay in app_user_grants.
+hazo_auth permission `darylweb:nw:superadmin`; finer capabilities stay in app_user_grants.
 
 ### 2026-06-20 — Telemetry provider deferred (NextDNS not set up)
 No telemetry provider is chosen yet (the user's NextDNS is not configured), so TelemetryProvider has
@@ -59,7 +59,7 @@ clean seam, so the real AsusWrtProvider drops in unchanged after the supervised 
 whole slice ship and demo now while the live-router work stays hardware-blocked.
 
 ### 2026-06-21 — D2 · Sync runs in a separate worker process (not instrumentation.ts)
-netwarden.sync runs from a standalone `scripts/worker.mjs` (hazo_jobs scheduler+worker) rather than an
+darylweb.sync runs from a standalone `scripts/worker.mjs` (hazo_jobs scheduler+worker) rather than an
 in-process instrumentation.ts hook. The worker imports the PURE `runDeviceSync` core and FakeRouterProvider
 directly over Node's native TS type-stripping (type-only imports, no `server-only`, no `@/` aliases), and
 builds its own better-sqlite3 adapter exposing both `raw()` (hazo_jobs) and `rawQuery()` (sync core).

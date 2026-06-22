@@ -3,8 +3,10 @@ import 'server-only';
 import { headers } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { redirect } from 'next/navigation';
-import { hazo_get_auth } from 'hazo_auth/server-lib';
+import { hazo_get_auth, get_auth_cache } from 'hazo_auth/server-lib';
 import { SUPERADMIN_PERMISSION } from '@/lib/app_config';
+import { ensureSuperadminByEmail } from './ensure_superadmin';
+import { getDb } from './db';
 
 export interface ServerAuthResult {
   authenticated: boolean;
@@ -36,10 +38,18 @@ export async function resolveServerAuth(): Promise<ServerAuthResult> {
     return { authenticated: false, subject: null, permissions: [], isSuperadmin: false };
   }
 
+  const email = result.user.email_address;
+  const superadminEmail = process.env.SUPERADMIN_EMAIL;
+  if (superadminEmail && email === superadminEmail && !result.permissions.includes(SUPERADMIN_PERMISSION)) {
+    // self-heal: grant and invalidate cache so next request picks it up
+    await ensureSuperadminByEmail(getDb(), email);
+    get_auth_cache().invalidate_user(result.user.id);
+  }
+
   const permissions = result.permissions;
   return {
     authenticated: true,
-    subject: result.user.email_address,
+    subject: email,
     permissions,
     isSuperadmin: permissions.includes(SUPERADMIN_PERMISSION),
   };

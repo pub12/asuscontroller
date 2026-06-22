@@ -2,19 +2,19 @@
 
 ## 2026-06-21 — Phase 8 — Telemetry vertical (domain insights, fake-first, overnight autonomous)
 Built the full telemetry vertical fake-first: deterministic FakeTelemetryProvider → worker-pure ingest
-core → netwarden.ingest schedule → per-device domain drill-down — all verified against fake data. Live
+core → darylweb.ingest schedule → per-device domain drill-down — all verified against fake data. Live
 NextDnsProvider stays a not-configured stub pending the real-source decision (D14). tsc + next build
 clean; ingest autotest + telemetry_ingest scenario green.
 
 - **Migration 0006:** `app_domain_events.blocked` flag + `app_groups.monitoring_enabled` (DEFAULT 1);
-  applied to the live netwarden.sqlite via the existing seed step.
+  applied to the live darylweb.sqlite via the existing seed step.
 - **TelemetryProvider factory:** `TELEMETRY_PROVIDER` / `TELEMETRY_INGEST_SEC` env + async provider
   factory; FakeTelemetryProvider default; NextDnsProvider lazy-loaded but still a not-configured stub
   — fake-provider-first per D14.
 - **Deterministic FakeTelemetryProvider** (39 events / 10 devices / 4 blocked) and worker-pure
   `runTelemetryIngest` core (watermark + half-open `[from,to)` window + composite-PK pre-SELECT dedupe
   — D16); hermetic `/api/ingest-test` lifecycle proof + `telemetry_ingest` autotest scenario.
-- **netwarden.ingest worker schedule:** idempotent find-or-create, default `*/5` cron; boot one-shot;
+- **darylweb.ingest worker schedule:** idempotent find-or-create, default `*/5` cron; boot one-shot;
   verified live (inserted 39, re-run fetched 1 / inserted 0 / skipped 1); telemetry-gap ops alert
   fires on `configured:false`.
 - **Per-device domain drill-down** on Device Detail: top domains + recent lookups + Today/7d toggle +
@@ -30,14 +30,14 @@ clean; ingest autotest + telemetry_ingest scenario green.
 
 ## 2026-06-21 — Phase 7 — Timers & Schedules (fake-first, overnight autonomous) + master_plan reconcile
 Built the full Timers & Schedules vertical fake-first: one-shot timers, future-dated one-shots, and
-recurring block/unblock windows — all verified against FakeRouterProvider. Worker fires netwarden.block/
+recurring block/unblock windows — all verified against FakeRouterProvider. Worker fires darylweb.block/
 unblock as a SYSTEM actor (audited as schedule-initiated). tsc + next build clean; all_ok autotests green.
 master_plan.md reconciled: Phases 5, 6, 7 and Phase 10 Ops marked done; dashboard and Phase Map updated.
 
 - **Migration 0005:** app_schedules label column + window_id (links block-cron and unblock-cron pairs).
 - **Worker-pure schedule engine:** runScheduleFire + scheduleService; AEST timezone (TZ=Australia/Sydney);
   jobsAdapter bridge connects hazo_jobs to the schedule service; all evaluation runs in the worker process.
-- **System-actor fires:** worker fires netwarden.block/unblock as a SYSTEM actor; mutations audited as
+- **System-actor fires:** worker fires darylweb.block/unblock as a SYSTEM actor; mutations audited as
   schedule-initiated (not re-checked per fire); notifyScheduleFired hook called on each fire.
 - **Schedules HTTP API:** list/create/update/cancel endpoints; discriminated kind (one-shot vs recurring
   window); schedule.create and schedule.cancel capability checks via the grants guard.
@@ -68,7 +68,7 @@ envelopes, worker + seed smokes) before commit.
   immediate offline, capped elapsed-minute presence accrual, new-device detect (D4/D5 semantics).
   Self-contained `/api/sync-test` lifecycle proof + `sync_test` autotest scenario (8 flags green).
 - **Worker:** standalone `scripts/worker.mjs` (`npm run worker`) — hazo_jobs scheduler+worker, idempotent
-  find-or-create netwarden.sync schedule, boot-time one-shot, refuses ROUTER_PROVIDER=asus (exit 1).
+  find-or-create darylweb.sync schedule, boot-time one-shot, refuses ROUTER_PROVIDER=asus (exit 1).
 - **Device APIs:** GET /api/devices (devices+groups), PATCH /api/devices/[id] (field-ownership enforced —
   only friendly_name/icon/notes/primary_group_id), POST /api/devices/[id]/acknowledge; in ALL_ROUTES.
 - **Explore → Devices screen:** HazoUiTable (search, status chips, group badge), New-pill acknowledge,
@@ -84,7 +84,7 @@ envelopes, worker + seed smokes) before commit.
   undecided (NextDNS not set up).
 
 ## 2026-06-20 — Foundations build + feasibility contracts (overnight autonomous)
-Built NetWarden as an external consuming app of the published hazo_* packages. All work verified
+Built DarylWeb as an external consuming app of the published hazo_* packages. All work verified
 (next build + tsc clean, /autotest backends green, jobs spike PASS); no live router/NextDNS calls.
 
 - **Phase 2 Foundations (8/8):** Next.js 16 App Router scaffold (src/app/, /autotest harness,
@@ -109,7 +109,7 @@ Built NetWarden as an external consuming app of the published hazo_* packages. A
   wants a raw adapter); hazo_jobs needs a raw {raw()} adapter branching on better-sqlite3 stmt.reader.
 
 ## 2026-06-20 — Project initialized
-- Created master_plan.md, CHANGELOG.md, DECISIONS.md from PRD v2 (design/netwarden_PRD_v2.md).
+- Created master_plan.md, CHANGELOG.md, DECISIONS.md from PRD v2 (design/darylweb_PRD_v2.md).
 - PRD mode; phase breakdown mirrors PRD §16 (Phase 1 feasibility spike + Phases 2–10 + Backlog).
 - 58 tasks recorded, all not-started. No application code exists yet.
 - Redesigned screens in design/screens/ adopted as UI reference; they resolve the v1 scope

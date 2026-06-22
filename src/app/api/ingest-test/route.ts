@@ -33,7 +33,7 @@ export async function GET() {
 
   const tmpDb = path.join(
     os.tmpdir(),
-    `netwarden_ingest_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
+    `darylweb_ingest_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
   );
 
   try {

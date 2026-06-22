@@ -51,7 +51,7 @@ async function runTests() {
   // createTestUser mints a session token (needs JWT_SECRET). This isolated-DB
   // autotest asserts the superadmin gate, not token signing, so provide a
   // throwaway secret when the environment hasn't set one (keeps it CI-safe).
-  process.env.JWT_SECRET ??= 'netwarden-autotest-only-not-a-real-secret';
+  process.env.JWT_SECRET ??= 'darylweb-autotest-only-not-a-real-secret';
 
   const hazoSchema = getHazoAuthSchema();
 
@@ -77,7 +77,7 @@ async function runTests() {
     const plainUser = await createTestUser(adapter, {
       email: 'plain@settings-test.local',
       role: 'role_plain_settings',
-      permissions: ['netwarden:nw:user'],
+      permissions: ['darylweb:nw:user'],
       scopeId: 'scope-plain-settings',
     });
     const plainHasPerm = await userHasSuperadmin(adapter, plainUser.id);

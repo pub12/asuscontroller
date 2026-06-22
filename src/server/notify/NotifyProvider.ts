@@ -1,7 +1,7 @@
 /**
  * src/server/notify/NotifyProvider.ts
  *
- * Ops-alerting seam for NetWarden.
+ * Ops-alerting seam for DarylWeb.
  *
  * NOTE: hazo_notify is an email-templating package (send_template_email,
  * handlebars rendering, categories) — it has NO generic alert or Telegram

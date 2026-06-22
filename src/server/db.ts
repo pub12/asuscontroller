@@ -9,7 +9,7 @@ export function getDb(): HazoConnectAdapter {
     _adapter = createHazoConnect({
       type: 'sqlite',
       sqlite: {
-        database_path: path.join(process.cwd(), 'netwarden.sqlite'),
+        database_path: path.join(process.cwd(), 'darylweb.sqlite'),
         driver: 'better-sqlite3',
       },
     });

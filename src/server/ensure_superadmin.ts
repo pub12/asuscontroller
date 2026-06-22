@@ -30,8 +30,8 @@ async function hasSuperadminHolder(adapter: HazoConnectAdapter): Promise<boolean
  * Idempotent — safe to call multiple times.
  */
 async function grantSuperadmin(adapter: HazoConnectAdapter, userId: string): Promise<void> {
-  const roleName = 'netwarden_superadmin';
-  const scopeName = 'NetWarden Root';
+  const roleName = 'darylweb_superadmin';
+  const scopeName = 'DarylWeb Root';
 
   // Upsert permission
   const permSvc = createCrudService<PermRow>(adapter, 'hazo_permissions');
@@ -40,7 +40,7 @@ async function grantSuperadmin(adapter: HazoConnectAdapter, userId: string): Pro
     const rows = await permSvc.insert({
       id: crypto.randomUUID(),
       permission_name: SUPERADMIN_PERMISSION,
-      description: 'NetWarden superadmin',
+      description: 'DarylWeb superadmin',
     } as Partial<PermRow>);
     perm = rows[0];
   }
@@ -133,6 +133,30 @@ export async function ensureFirstSuperadmin(
 
   await grantSuperadmin(adapter, userId);
   console.log(`[ensureFirstSuperadmin] Granted ${SUPERADMIN_PERMISSION} to ${email}`);
+}
+
+/**
+ * Per-user self-heal: if the env SUPERADMIN_EMAIL matches, and the user
+ * doesn't currently hold the superadmin permission, grant it now.
+ * Idempotent. Does nothing for non-matching emails.
+ */
+export async function ensureSuperadminByEmail(
+  adapter: HazoConnectAdapter,
+  email: string,
+): Promise<void> {
+  const superadminEmail = process.env.SUPERADMIN_EMAIL;
+  if (!superadminEmail || email !== superadminEmail) return;
+
+  const userRows = await createCrudService(adapter, 'hazo_users').findBy({
+    email_address: email,
+  });
+  if (!userRows.length) return;
+  const userId = (userRows[0] as { id: string }).id;
+
+  if (await userHasSuperadmin(adapter, userId)) return;
+
+  await grantSuperadmin(adapter, userId);
+  console.log(`[ensureSuperadminByEmail] Granted ${SUPERADMIN_PERMISSION} to ${email}`);
 }
 
 /**

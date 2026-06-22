@@ -9,7 +9,7 @@ import { blockDevice, unblockDevice, BlockServiceError } from '@/server/devices/
 const MIGRATIONS_DIR = path.join(process.cwd(), 'migrations');
 
 export async function GET() {
-  const tmpDb = path.join(os.tmpdir(), `netwarden_block_service_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`);
+  const tmpDb = path.join(os.tmpdir(), `darylweb_block_service_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`);
 
   try {
     const adapter = createHazoConnect({

@@ -10,7 +10,7 @@ const MIGRATIONS_DIR = path.join(process.cwd(), 'migrations');
 export async function GET() {
   const tmpDb = path.join(
     os.tmpdir(),
-    `netwarden_authorize_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
+    `darylweb_authorize_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
   );
 
   try {

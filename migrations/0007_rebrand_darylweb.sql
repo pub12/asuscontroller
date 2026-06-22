@@ -1,0 +1,5 @@
+-- 0007_rebrand_darylweb.sql
+-- The hazo_auth table renames (hazo_permissions, hazo_roles, hazo_scopes) cannot
+-- run here because hazo_auth's schema is applied AFTER app migrations in seed.mjs.
+-- The actual UPDATE statements live in seed.mjs step 2a, which runs after the
+-- hazo_auth schema exists. This file is a tracked no-op placeholder.

@@ -4,17 +4,71 @@
 @source "../../node_modules/hazo_auth/dist";
 @source "../../node_modules/hazo_api/dist";
 
+/* Switch dark: from media-query to class-based (for next-themes attribute="class") */
+@custom-variant dark (&:is(.dark *));
+
 /*
- * hazo_ui (and hazo_auth/hazo_api) ship shadcn-style design tokens as raw HSL
- * triplets in hazo_ui/styles.css (`:root { --background: 0 0% 100% }`, plus a
- * `.dark` override). Those packages assume a Tailwind v3 preset maps the tokens
- * to color utilities — but this app is Tailwind v4, so we provide that mapping
- * here. Without it, utilities like `bg-background` / `bg-popover` resolve to an
- * invalid value and components such as HazoUiDialog render with a transparent
- * panel (the page shows through the modal).
- *
- * `@theme inline` keeps the utilities pointing at `var(--token)` so the `.dark`
- * overrides in styles.css continue to switch themes at runtime.
+ * Override hazo_ui token palette with violet/lavender brand colors.
+ * hazo_ui/styles.css is imported BEFORE this file in layout.tsx, so
+ * these declarations win by source order.
+ */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 262 25% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 262 25% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 262 25% 12%;
+  --primary: 262 70% 55%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 260 30% 96%;
+  --secondary-foreground: 262 40% 22%;
+  --muted: 260 25% 96%;
+  --muted-foreground: 262 12% 45%;
+  --accent: 255 60% 94%;
+  --accent-foreground: 262 50% 30%;
+  --destructive: 0 75% 52%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 260 25% 90%;
+  --input: 260 25% 90%;
+  --ring: 262 70% 55%;
+  --radius: 0.75rem;
+  --brand-lavender: 255 65% 78%;
+  --brand-grad-from: 262 75% 62%;
+  --brand-grad-to: 255 80% 80%;
+  --success: 150 60% 45%;
+}
+
+.dark {
+  --background: 262 30% 6%;
+  --foreground: 255 30% 92%;
+  --card: 260 28% 9%;
+  --card-foreground: 255 30% 92%;
+  --popover: 260 28% 10%;
+  --popover-foreground: 255 30% 92%;
+  --primary: 260 75% 68%;
+  --primary-foreground: 262 40% 10%;
+  --secondary: 260 25% 16%;
+  --secondary-foreground: 255 30% 92%;
+  --muted: 260 22% 15%;
+  --muted-foreground: 258 15% 62%;
+  --accent: 260 30% 20%;
+  --accent-foreground: 255 40% 90%;
+  --destructive: 0 62% 48%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 260 25% 18%;
+  --input: 260 25% 18%;
+  --ring: 260 75% 68%;
+  --brand-lavender: 255 65% 78%;
+  --brand-grad-from: 262 75% 62%;
+  --brand-grad-to: 255 80% 80%;
+  --success: 150 55% 55%;
+}
+
+/*
+ * Map tokens to Tailwind v4 color utilities.
+ * `@theme inline` keeps utilities pointing at var(--token) so .dark overrides
+ * switch themes at runtime.
  */
 @theme inline {
   --color-background: hsl(var(--background));
@@ -36,11 +90,26 @@
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
+  --color-brand-lavender: hsl(var(--brand-lavender));
+  --color-success: hsl(var(--success));
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* shadcn base default: give the bare `border` utility the token border color. */
 @layer base {
   * {
     border-color: hsl(var(--border));
+  }
+}
+
+@layer utilities {
+  .text-brand-gradient {
+    background-image: linear-gradient(
+      to right,
+      hsl(var(--brand-grad-from)),
+      hsl(var(--brand-grad-to))
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }

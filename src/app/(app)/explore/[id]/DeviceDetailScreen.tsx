@@ -101,7 +101,7 @@ function StatusChip({ status }: { status: string | undefined }) {
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-        online ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+        online ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400' : 'bg-muted text-muted-foreground'
       }`}
     >
       <Icon className="h-3 w-3" />
@@ -112,7 +112,7 @@ function StatusChip({ status }: { status: string | undefined }) {
 
 function BlockedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-400">
       <Ban className="h-3 w-3" />
       Blocked
     </span>
@@ -121,9 +121,9 @@ function BlockedBadge() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -161,7 +161,7 @@ function TimelineItemRow({ item }: { item: ActivityItem }) {
         </span>
         <div className="min-w-0 flex-1">
           <p className={`text-sm font-medium ${meta.colorClass}`}>{meta.label}</p>
-          <p className="mt-0.5 text-xs text-gray-400">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {item.actor_label ?? item.actor_kind} &middot; {timeAgo(item.occurred_at)}
           </p>
         </div>
@@ -173,19 +173,19 @@ function TimelineItemRow({ item }: { item: ActivityItem }) {
   const hasDiff = item.before_value != null || item.after_value != null;
   return (
     <div className="flex items-start gap-3 py-3">
-      <span className="mt-0.5 flex-shrink-0 text-gray-400">
+      <span className="mt-0.5 flex-shrink-0 text-muted-foreground">
         <SquarePen className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-700">
+        <p className="text-sm font-medium text-foreground">
           {item.field_path ?? '?'} {item.op ?? ''}
         </p>
         {hasDiff && (
-          <p className="mt-0.5 text-xs text-gray-500">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {item.before_value ?? '—'} &rarr; {item.after_value ?? '—'}
           </p>
         )}
-        <p className="mt-0.5 text-xs text-gray-400">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {item.actor_label ?? item.actor_kind} &middot; {timeAgo(item.occurred_at)}
         </p>
       </div>
@@ -258,27 +258,27 @@ export function DeviceDetailScreen({
       <div>
         <Link
           href="/explore"
-          className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Explore
         </Link>
 
         <div className="flex flex-wrap items-start gap-4">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-gray-50">
-            <DeviceIcon className="h-6 w-6 text-gray-500" />
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border border-border bg-muted">
+            <DeviceIcon className="h-6 w-6 text-muted-foreground" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold text-gray-900 truncate">{displayName}</h1>
+              <h1 className="text-2xl font-semibold text-foreground truncate">{displayName}</h1>
               <StatusChip status={device.status} />
               {isBlocked && <BlockedBadge />}
             </div>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               {device.mac ?? '—'}
-              {device.vendor && <span className="ml-2 text-gray-400">{device.vendor}</span>}
+              {device.vendor && <span className="ml-2 text-muted-foreground">{device.vendor}</span>}
               {device.current_ip && (
-                <span className="ml-2 text-gray-400">{device.current_ip}</span>
+                <span className="ml-2 text-muted-foreground">{device.current_ip}</span>
               )}
             </p>
           </div>
@@ -287,7 +287,7 @@ export function DeviceDetailScreen({
 
       {/* ---- Access toggle ---- */}
       <section>
-        <h2 className="mb-3 text-base font-semibold text-gray-800">Internet Access</h2>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Internet Access</h2>
         {isSuperadmin ? (
           <div className="flex flex-wrap items-center gap-3">
             {isBlocked ? (
@@ -312,14 +312,14 @@ export function DeviceDetailScreen({
             <Button
               variant="outline"
               onClick={() => setShowTimerModal(true)}
-              className="gap-1.5 text-teal-700 border-teal-200 hover:bg-teal-50"
+              className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
             >
               <CalendarClock className="h-4 w-4" />
               Set timer / Schedule
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Read-only — superadmin required to change access.
           </p>
         )}
@@ -327,8 +327,8 @@ export function DeviceDetailScreen({
 
       {/* ---- Time on device ---- */}
       <section>
-        <h2 className="mb-3 text-base font-semibold text-gray-800 flex items-center gap-2">
-          <Clock className="h-4 w-4 text-gray-400" />
+        <h2 className="mb-3 text-base font-semibold text-foreground flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
           Time on Device
         </h2>
         <div className="grid grid-cols-3 gap-3">
@@ -338,11 +338,11 @@ export function DeviceDetailScreen({
         </div>
 
         {activity.presence.byDay.length > 0 ? (
-          <ul className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200">
+          <ul className="mt-4 divide-y divide-border rounded-lg border border-border">
             {activity.presence.byDay.map((row) => (
               <li key={row.day} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span className="text-gray-700">{row.day}</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-foreground">{row.day}</span>
+                <span className="font-medium text-foreground">
                   {formatMinutes(row.connected_minutes)}
                 </span>
               </li>
@@ -357,12 +357,12 @@ export function DeviceDetailScreen({
 
       {/* ---- Activity timeline ---- */}
       <section>
-        <h2 className="mb-3 text-base font-semibold text-gray-800 flex items-center gap-2">
-          <Activity className="h-4 w-4 text-gray-400" />
+        <h2 className="mb-3 text-base font-semibold text-foreground flex items-center gap-2">
+          <Activity className="h-4 w-4 text-muted-foreground" />
           Activity
         </h2>
         {activity.timeline.length > 0 ? (
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 px-4">
+          <div className="divide-y divide-border rounded-lg border border-border px-4">
             {activity.timeline.map((item, i) => (
               <TimelineItemRow key={i} item={item} />
             ))}
@@ -375,8 +375,8 @@ export function DeviceDetailScreen({
       {/* ---- Top domains ---- */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
-            <Globe className="h-4 w-4 text-gray-400" />
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
             Top Domains
           </h2>
           {telemetryConfigured && domains.monitoringEnabled && (
@@ -385,8 +385,8 @@ export function DeviceDetailScreen({
                 onClick={() => setDomainRange('today')}
                 className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                   domainRange === 'today'
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 Today
@@ -395,8 +395,8 @@ export function DeviceDetailScreen({
                 onClick={() => setDomainRange('7d')}
                 className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                   domainRange === '7d'
-                    ? 'bg-gray-800 text-white'
-                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
                 7d
@@ -422,38 +422,38 @@ export function DeviceDetailScreen({
           />
         ) : (
           <>
-            <p className="mb-2 text-xs text-gray-400">
+            <p className="mb-2 text-xs text-muted-foreground">
               {domains.totalQueries} queries &middot; {domains.topDomains.length} domains
             </p>
-            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 px-4">
+            <div className="divide-y divide-border rounded-lg border border-border px-4">
               {domains.topDomains.map((d) => (
                 <div key={d.domain} className="flex items-center justify-between py-3">
-                  <span className="min-w-0 flex-1 truncate text-sm text-gray-700">{d.domain}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{d.domain}</span>
                   <div className="ml-4 flex flex-shrink-0 items-center gap-2">
                     {d.blockedCount > 0 && (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-400">
                         {d.blockedCount} blocked
                       </span>
                     )}
-                    <span className="text-xs text-gray-500">{d.count} queries</span>
-                    <span className="text-xs text-gray-400">{timeAgo(d.lastSeen)}</span>
+                    <span className="text-xs text-muted-foreground">{d.count} queries</span>
+                    <span className="text-xs text-muted-foreground">{timeAgo(d.lastSeen)}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <h3 className="mb-2 mt-6 text-sm font-semibold text-gray-700">Recent lookups</h3>
-            <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 px-4">
+            <h3 className="mb-2 mt-6 text-sm font-semibold text-foreground">Recent lookups</h3>
+            <div className="divide-y divide-border rounded-lg border border-border px-4">
               {domains.timeline.map((item, i) => (
                 <div key={i} className="flex items-center justify-between py-2.5">
-                  <span className="min-w-0 flex-1 truncate text-sm text-gray-700">{item.domain}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-foreground">{item.domain}</span>
                   <div className="ml-4 flex flex-shrink-0 items-center gap-2">
                     {item.blocked && (
-                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-400">
                         blocked
                       </span>
                     )}
-                    <span className="text-xs text-gray-400">{timeAgo(item.ts)}</span>
+                    <span className="text-xs text-muted-foreground">{timeAgo(item.ts)}</span>
                   </div>
                 </div>
               ))}
@@ -475,7 +475,7 @@ export function DeviceDetailScreen({
           onCancel={() => setConfirmBlock(false)}
           sizeWidth="420px"
         >
-          <div className="p-4 text-sm text-gray-600">
+          <div className="p-4 text-sm text-muted-foreground">
             This cuts internet access for this device at the router. You can unblock it again at any time.
           </div>
         </HazoUiDialog>

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
-const DB_PATH = path.join(projectRoot, 'netwarden.sqlite');
+const DB_PATH = path.join(projectRoot, 'darylweb.sqlite');
 
 // ── 1. App migrations (hazo_connect) ─────────────────────────────────────────
 try {
@@ -61,10 +61,19 @@ for (const stmt of SQLITE_SCHEMA.split(';').map((s) => s.trim()).filter(Boolean)
 }
 console.log('[seed] hazo_auth schema applied (idempotent).');
 
+// ── 2a. Rebrand: rename stored hazo_auth strings netwarden → darylweb ────────
+// Runs here (after hazo_auth schema exists) rather than in migration 0007 (which
+// runs before hazo_auth tables are created). Idempotent WHERE clauses.
+db.prepare(`UPDATE hazo_permissions SET permission_name='darylweb:nw:superadmin' WHERE permission_name='netwarden:nw:superadmin'`).run();
+db.prepare(`UPDATE hazo_permissions SET permission_name='darylweb:nw:user'       WHERE permission_name='netwarden:nw:user'`).run();
+db.prepare(`UPDATE hazo_roles  SET role_name='darylweb_superadmin' WHERE role_name='netwarden_superadmin'`).run();
+db.prepare(`UPDATE hazo_scopes SET name='DarylWeb Root'            WHERE name='NetWarden Root'`).run();
+console.log('[seed] Rebrand migrations applied (idempotent).');
+
 // ── 3. First-superadmin provisioning ─────────────────────────────────────────
 const SUPERADMIN_EMAIL = process.env.SUPERADMIN_EMAIL;
 const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD ?? 'changeme1234';
-const SUPERADMIN_PERMISSION = 'netwarden:nw:superadmin';
+const SUPERADMIN_PERMISSION = 'darylweb:nw:superadmin';
 
 if (SUPERADMIN_EMAIL) {
   const { default: argon2 } = await import('argon2');
@@ -92,16 +101,16 @@ if (SUPERADMIN_EMAIL) {
   // Idempotent permission
   const permId = crypto.randomUUID();
   db.prepare(`INSERT OR IGNORE INTO hazo_permissions (id, permission_name, description)
-              VALUES (?, ?, 'NetWarden superadmin')`)
+              VALUES (?, ?, 'DarylWeb superadmin')`)
     .run(permId, SUPERADMIN_PERMISSION);
   const actualPermId = db.prepare(`SELECT id FROM hazo_permissions WHERE permission_name = ?`)
     .get(SUPERADMIN_PERMISSION).id;
 
   // Idempotent role
   const roleId = crypto.randomUUID();
-  db.prepare(`INSERT OR IGNORE INTO hazo_roles (id, role_name) VALUES (?, 'netwarden_superadmin')`)
+  db.prepare(`INSERT OR IGNORE INTO hazo_roles (id, role_name) VALUES (?, 'darylweb_superadmin')`)
     .run(roleId);
-  const actualRoleId = db.prepare(`SELECT id FROM hazo_roles WHERE role_name = 'netwarden_superadmin'`)
+  const actualRoleId = db.prepare(`SELECT id FROM hazo_roles WHERE role_name = 'darylweb_superadmin'`)
     .get().id;
 
   // Idempotent role_permission link
@@ -110,9 +119,9 @@ if (SUPERADMIN_EMAIL) {
 
   // Idempotent root scope
   const scopeId = crypto.randomUUID();
-  db.prepare(`INSERT OR IGNORE INTO hazo_scopes (id, name, level) VALUES (?, 'NetWarden Root', 'firm')`)
+  db.prepare(`INSERT OR IGNORE INTO hazo_scopes (id, name, level) VALUES (?, 'DarylWeb Root', 'firm')`)
     .run(scopeId);
-  const actualScopeId = db.prepare(`SELECT id FROM hazo_scopes WHERE name = 'NetWarden Root'`)
+  const actualScopeId = db.prepare(`SELECT id FROM hazo_scopes WHERE name = 'DarylWeb Root'`)
     .get().id;
 
   // Idempotent user_scope assignment

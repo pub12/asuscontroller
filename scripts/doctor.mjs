@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scripts/doctor.mjs — NetWarden environment doctor
+ * scripts/doctor.mjs — DarylWeb environment doctor
  *
  * Imports hazo_env doctor() and prints the full report to stdout.
  * Exits with code 1 if any check fails so CI can catch config regressions.
@@ -24,7 +24,7 @@ const env =
 const report = await doctor({ env, all, probe });
 
 const icons = { ok: '✓', warn: '⚠', error: '✗' };
-console.log(`\nNetWarden — hazo-env doctor  (env: ${report.env})\n`);
+console.log(`\nDarylWeb — hazo-env doctor  (env: ${report.env})\n`);
 
 const width = Math.max(...report.checks.map((c) => c.label.length)) + 2;
 for (const check of report.checks) {
@@ -41,8 +41,8 @@ if (report.passed) {
   console.error('  One or more checks failed. Fix the errors above.\n');
 }
 
-// --- NetWarden sync config ---
-console.log('NetWarden — sync config\n');
+// --- DarylWeb sync config ---
+console.log('DarylWeb — sync config\n');
 
 let syncConfigPassed = true;
 

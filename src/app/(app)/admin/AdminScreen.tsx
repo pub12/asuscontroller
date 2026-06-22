@@ -130,7 +130,7 @@ function NewGrantDialog({ open, onOpenChange, onCreated, userEmails }: NewGrantD
     >
       <div className="space-y-4 p-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Subject (email)</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Subject (email)</label>
           <Input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -140,7 +140,7 @@ function NewGrantDialog({ open, onOpenChange, onCreated, userEmails }: NewGrantD
             <button
               type="button"
               onClick={() => setSubject(suggestion)}
-              className="mt-1 text-xs text-indigo-600 hover:underline"
+              className="mt-1 text-xs text-primary hover:underline"
             >
               {suggestion}
             </button>
@@ -148,7 +148,7 @@ function NewGrantDialog({ open, onOpenChange, onCreated, userEmails }: NewGrantD
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Capability</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Capability</label>
           <Select value={capability} onValueChange={setCapability}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select capability" />
@@ -164,7 +164,7 @@ function NewGrantDialog({ open, onOpenChange, onCreated, userEmails }: NewGrantD
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Scope type</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Scope type</label>
           <Select value={scopeType} onValueChange={(v) => setScopeType(v as 'global' | 'group')}>
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -178,7 +178,7 @@ function NewGrantDialog({ open, onOpenChange, onCreated, userEmails }: NewGrantD
 
         {scopeType === 'group' && (
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Group ID</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Group ID</label>
             <Input
               value={scopeId}
               onChange={(e) => setScopeId(e.target.value)}
@@ -252,12 +252,12 @@ export function AdminScreen({ grants, requests, users }: Props) {
     {
       key: 'scope_type',
       label: 'Scope',
-      cell: (r) => <span className="text-sm text-gray-700">{scopeLabel(r.scope_type, r.scope_id)}</span>,
+      cell: (r) => <span className="text-sm text-foreground">{scopeLabel(r.scope_type, r.scope_id)}</span>,
     },
     {
       key: 'note',
       label: 'Note',
-      cell: (r) => <span className="text-sm text-gray-500">{r.note ?? '—'}</span>,
+      cell: (r) => <span className="text-sm text-muted-foreground">{r.note ?? '—'}</span>,
     },
     {
       key: 'id',
@@ -268,7 +268,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
             variant="outline"
             size="sm"
             onClick={(e) => { e.stopPropagation(); void handleDecide(r.id, 'approve'); }}
-            className="h-7 px-2 text-green-700 border-green-200 hover:bg-green-50"
+            className="h-7 px-2 text-green-700 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-500/30 dark:hover:bg-green-500/10"
           >
             Approve
           </Button>
@@ -276,7 +276,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
             variant="outline"
             size="sm"
             onClick={(e) => { e.stopPropagation(); void handleDecide(r.id, 'decline'); }}
-            className="h-7 px-2 text-red-700 border-red-200 hover:bg-red-50"
+            className="h-7 px-2 text-red-700 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-500/10"
           >
             Decline
           </Button>
@@ -298,7 +298,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
     {
       key: 'scope_type',
       label: 'Scope',
-      cell: (g) => <span className="text-sm text-gray-700">{scopeLabel(g.scope_type, g.scope_id)}</span>,
+      cell: (g) => <span className="text-sm text-foreground">{scopeLabel(g.scope_type, g.scope_id)}</span>,
     },
     {
       key: 'status',
@@ -308,8 +308,8 @@ export function AdminScreen({ grants, requests, users }: Props) {
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
             g.status === 'active'
-              ? 'bg-green-100 text-green-700'
-              : 'bg-gray-100 text-gray-500'
+              ? 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400'
+              : 'bg-muted text-muted-foreground'
           }`}
         >
           {g.status}
@@ -319,7 +319,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
     {
       key: 'granted_by',
       label: 'Granted by',
-      cell: (g) => <span className="text-sm text-gray-500">{g.granted_by ?? '—'}</span>,
+      cell: (g) => <span className="text-sm text-muted-foreground">{g.granted_by ?? '—'}</span>,
     },
     {
       key: 'id',
@@ -330,12 +330,12 @@ export function AdminScreen({ grants, requests, users }: Props) {
             variant="outline"
             size="sm"
             onClick={(e) => { e.stopPropagation(); void handleRevoke(g.id); }}
-            className="h-7 px-2 text-red-700 border-red-200 hover:bg-red-50"
+            className="h-7 px-2 text-red-700 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-500/30 dark:hover:bg-red-500/10"
           >
             Revoke
           </Button>
         ) : (
-          <span className="text-xs text-gray-400">—</span>
+          <span className="text-xs text-muted-foreground">—</span>
         ),
     },
   ];
@@ -346,19 +346,19 @@ export function AdminScreen({ grants, requests, users }: Props) {
       key: 'name',
       label: 'Name',
       sortable: true,
-      cell: (u) => <span className="text-sm text-gray-700">{u.name ?? '—'}</span>,
+      cell: (u) => <span className="text-sm text-foreground">{u.name ?? '—'}</span>,
     },
     {
       key: 'status',
       label: 'Status',
       sortable: true,
-      cell: (u) => <span className="text-sm text-gray-700">{u.status ?? '—'}</span>,
+      cell: (u) => <span className="text-sm text-foreground">{u.status ?? '—'}</span>,
     },
     {
       key: 'created_at',
       label: 'Created',
       sortable: true,
-      cell: (u) => <span className="text-sm text-gray-500">{fmtDate(u.created_at)}</span>,
+      cell: (u) => <span className="text-sm text-muted-foreground">{fmtDate(u.created_at)}</span>,
     },
   ];
 
@@ -368,10 +368,10 @@ export function AdminScreen({ grants, requests, users }: Props) {
   return (
     <div className="space-y-6">
       {/* Page heading */}
-      <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Admin</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin</h1>
 
       {/* Tab bar */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit">
+      <div className="flex gap-1 rounded-lg border border-border bg-muted p-1 w-fit">
         {(
           [
             { key: 'pending', label: `Pending requests${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ''}` },
@@ -384,8 +384,8 @@ export function AdminScreen({ grants, requests, users }: Props) {
             onClick={() => setTab(key)}
             className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
               tab === key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {label}
@@ -395,7 +395,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
 
       {/* Tab: Pending requests */}
       {tab === 'pending' && (
-        <div className="rounded-lg border border-gray-200">
+        <div className="rounded-lg border border-border">
           <HazoUiTable<RequestRow>
             columns={requestColumns}
             rows={pendingRequests}
@@ -423,7 +423,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
               + New grant
             </Button>
           </div>
-          <div className="rounded-lg border border-gray-200">
+          <div className="rounded-lg border border-border">
             <HazoUiTable<GrantRow>
               columns={grantColumns}
               rows={sortedGrants}
@@ -441,7 +441,7 @@ export function AdminScreen({ grants, requests, users }: Props) {
 
       {/* Tab: Users */}
       {tab === 'users' && (
-        <div className="rounded-lg border border-gray-200">
+        <div className="rounded-lg border border-border">
           <HazoUiTable<SafeUserRow>
             columns={userColumns}
             rows={users}

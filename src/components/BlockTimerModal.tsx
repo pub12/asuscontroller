@@ -143,13 +143,13 @@ function TimerPanel({
   return (
     <div className="space-y-5">
       {/* Description */}
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         Blocks internet now and auto-unblocks after the selected duration.
       </p>
 
       {/* Quick picks */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Quick pick</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick pick</p>
         <div className="flex flex-wrap gap-2">
           {DURATION_PRESETS.map(({ label, min }) => (
             <button
@@ -159,8 +159,8 @@ function TimerPanel({
               onClick={() => { setSelectedPreset(min); }}
               className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${
                 !untilEnabled && selectedPreset === min
-                  ? 'border-teal-700 bg-teal-700 text-white'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-teal-600 hover:text-teal-700'
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-foreground hover:border-primary hover:text-primary'
               }`}
             >
               {label}
@@ -173,8 +173,8 @@ function TimerPanel({
             onClick={() => setSelectedPreset('custom')}
             className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${
               !untilEnabled && selectedPreset === 'custom'
-                ? 'border-teal-700 bg-teal-700 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-teal-600 hover:text-teal-700'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-card text-foreground hover:border-primary hover:text-primary'
             }`}
           >
             Custom
@@ -190,9 +190,9 @@ function TimerPanel({
             min={1}
             value={customMin}
             onChange={(e) => setCustomMin(e.target.value)}
-            className="w-24 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-24 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           />
-          <span className="text-sm text-gray-500">minutes</span>
+          <span className="text-sm text-muted-foreground">minutes</span>
         </div>
       )}
 
@@ -200,8 +200,8 @@ function TimerPanel({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-teal-700" />
-            <span className="text-sm font-medium text-gray-800">Until a specific time</span>
+            <Clock className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Until a specific time</span>
           </div>
           {/* Toggle switch */}
           <button
@@ -209,12 +209,12 @@ function TimerPanel({
             role="switch"
             aria-checked={untilEnabled}
             onClick={() => setUntilEnabled((v) => !v)}
-            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 ${
-              untilEnabled ? 'bg-teal-700' : 'bg-gray-300'
+            className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ring-offset-background ${
+              untilEnabled ? 'bg-primary' : 'bg-input'
             }`}
           >
             <span
-              className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              className={`inline-block h-4 w-4 rounded-full bg-card shadow transition-transform ${
                 untilEnabled ? 'translate-x-5' : 'translate-x-1'
               }`}
             />
@@ -225,7 +225,7 @@ function TimerPanel({
             type="time"
             value={untilTime}
             onChange={(e) => setUntilTime(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+            className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
           />
         )}
       </div>
@@ -234,7 +234,7 @@ function TimerPanel({
       <Button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full bg-teal-700 text-white hover:bg-teal-800 py-3 rounded-xl text-base font-semibold"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl text-base font-semibold"
       >
         <Lock className="mr-2 h-4 w-4" />
         {submitting ? 'Blocking…' : 'Block now'}
@@ -268,14 +268,14 @@ function FuturePanel({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         Schedule a one-time block or unblock for a future date and time.
       </p>
 
       {/* Action picker */}
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Action</p>
-        <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action</p>
+        <div className="flex rounded-lg border border-border bg-muted p-1">
           {(['block', 'unblock'] as const).map((a) => (
             <button
               key={a}
@@ -283,8 +283,8 @@ function FuturePanel({
               onClick={() => setAction(a)}
               className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${
                 action === a
-                  ? 'bg-white text-teal-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {a.charAt(0).toUpperCase() + a.slice(1)}
@@ -295,21 +295,21 @@ function FuturePanel({
 
       {/* Date + time */}
       <div>
-        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
+        <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Date &amp; Time
         </label>
         <input
           type="datetime-local"
           value={atLocal}
           onChange={(e) => setAtLocal(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+          className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
         />
       </div>
 
       <Button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full bg-teal-700 text-white hover:bg-teal-800 py-3 rounded-xl text-base font-semibold"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl text-base font-semibold"
       >
         <CalendarClock className="mr-2 h-4 w-4" />
         {submitting ? 'Scheduling…' : `Schedule ${action}`}
@@ -368,27 +368,27 @@ function RecurringPanel({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted-foreground">
         Set up a repeating block window or standalone recurring action.
       </p>
 
       {/* Mode toggle */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Repeat2 className="h-4 w-4 text-teal-700" />
-          <span className="text-sm font-medium text-gray-800">Block window (start + end)</span>
+          <Repeat2 className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">Block window (start + end)</span>
         </div>
         <button
           type="button"
           role="switch"
           aria-checked={windowEnabled}
           onClick={() => setWindowEnabled((v) => !v)}
-          className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-2 ${
-            windowEnabled ? 'bg-teal-700' : 'bg-gray-300'
+          className={`relative inline-flex h-6 w-10 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ring-offset-background ${
+            windowEnabled ? 'bg-primary' : 'bg-input'
           }`}
         >
           <span
-            className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+            className={`inline-block h-4 w-4 rounded-full bg-card shadow transition-transform ${
               windowEnabled ? 'translate-x-5' : 'translate-x-1'
             }`}
           />
@@ -407,8 +407,8 @@ function RecurringPanel({
                   onClick={() => toggleDay(i)}
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
                     daysMask[i]
-                      ? 'bg-teal-700 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   }`}
                   aria-label={DAY_FULL[i]}
                   aria-pressed={daysMask[i]}
@@ -422,21 +422,21 @@ function RecurringPanel({
           {/* Start / End times */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Start (block)</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Start (block)</label>
               <input
                 type="time"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">End (unblock)</label>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">End (unblock)</label>
               <input
                 type="time"
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+                className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
@@ -445,8 +445,8 @@ function RecurringPanel({
         <>
           {/* Advanced: action + raw cron */}
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Action</p>
-            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action</p>
+            <div className="flex rounded-lg border border-border bg-muted p-1">
               {(['block', 'unblock'] as const).map((a) => (
                 <button
                   key={a}
@@ -454,8 +454,8 @@ function RecurringPanel({
                   onClick={() => setAdvAction(a)}
                   className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${
                     advAction === a
-                      ? 'bg-white text-teal-700 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {a.charAt(0).toUpperCase() + a.slice(1)}
@@ -464,15 +464,15 @@ function RecurringPanel({
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Cron expression (5-field)</label>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cron expression (5-field)</label>
             <input
               type="text"
               value={cronExpr}
               onChange={(e) => setCronExpr(e.target.value)}
               placeholder="0 22 * * 1-5"
-              className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-600"
+              className="w-full rounded-lg border border-border bg-muted px-3 py-2 font-mono text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
             />
-            <p className="mt-1 text-xs text-gray-400">e.g. <code>0 22 * * 1-5</code> = weeknights at 10 PM</p>
+            <p className="mt-1 text-xs text-muted-foreground">e.g. <code>0 22 * * 1-5</code> = weeknights at 10 PM</p>
           </div>
         </>
       )}
@@ -480,7 +480,7 @@ function RecurringPanel({
       <Button
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-full bg-teal-700 text-white hover:bg-teal-800 py-3 rounded-xl text-base font-semibold"
+        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl text-base font-semibold"
       >
         <Repeat2 className="mr-2 h-4 w-4" />
         {submitting ? 'Saving…' : 'Save schedule'}
@@ -553,14 +553,14 @@ export function BlockTimerModal({
     >
       <div className="space-y-4 p-4 pt-2">
         {/* Target label */}
-        <p className="text-sm text-gray-500">
-          <span className="font-medium text-gray-700">{targetLabel}</span>{' '}
+        <p className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{targetLabel}</span>{' '}
           &middot;{' '}
           {targetType === 'device' ? 'device' : 'group'}
         </p>
 
         {/* Tab strip */}
-        <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+        <div className="flex rounded-lg border border-border bg-muted p-1">
           {TABS.map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -568,8 +568,8 @@ export function BlockTimerModal({
               onClick={() => setTab(id)}
               className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-sm font-medium transition-colors ${
                 tab === id
-                  ? 'bg-white text-teal-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <Icon className="h-3.5 w-3.5" />

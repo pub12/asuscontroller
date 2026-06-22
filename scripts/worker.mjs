@@ -21,7 +21,7 @@ import path from 'node:path';
 // ---------------------------------------------------------------------------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
-const DB_PATH = path.join(repoRoot, 'netwarden.sqlite');
+const DB_PATH = path.join(repoRoot, 'darylweb.sqlite');
 
 // ---------------------------------------------------------------------------
 // Environment — Next.js auto-loads .env.local, but this standalone worker does
@@ -146,7 +146,7 @@ const adapter = {
 
 // ---------------------------------------------------------------------------
 // Apply hazo_jobs DDL (idempotent — uses CREATE TABLE IF NOT EXISTS)
-// Safe on netwarden.sqlite which already has app_* tables but no hazo_jobs_* tables.
+// Safe on darylweb.sqlite which already has app_* tables but no hazo_jobs_* tables.
 // ---------------------------------------------------------------------------
 const { applyDdl, createJobsClient, createScheduler, createWorker } = await import('hazo_jobs/server');
 
@@ -282,7 +282,7 @@ const telemetryProvider = new FakeTelemetryProvider();
 // ---------------------------------------------------------------------------
 // Startup banner
 // ---------------------------------------------------------------------------
-console.log('[worker] ─── NetWarden Sync Worker ───────────────────────────────');
+console.log('[worker] ─── DarylWeb Sync Worker ───────────────────────────────');
 console.log(`[worker] DB path:       ${DB_PATH}`);
 console.log(`[worker] Provider mode: ${providerMode}`);
 console.log(`[worker] Interval:      ${intervalSec}s → cron "${cron}" (every ${minutes} minute(s))`);
@@ -305,7 +305,7 @@ const worker = createWorker({
   adapter,
   dialect: 'sqlite',
   tablePrefix: 'hazo_jobs',
-  workerId: 'netwarden-sync-worker',
+  workerId: 'darylweb-sync-worker',
   types: ['netwarden.sync', 'netwarden.retention', 'netwarden.block', 'netwarden.unblock', 'netwarden.ingest'],
   pollMs: 1_000,
   concurrency: 1,
@@ -318,7 +318,7 @@ const handler = async (job) => {
       console.log('[worker] netwarden.retention pruned', job.id, JSON.stringify(result));
       return result;
     } catch (err) {
-      await notify.alert({ title: '🔴 NetWarden retention prune failed', body: String(err?.message ?? err), dedupeKey: 'retention-failure' });
+      await notify.alert({ title: '🔴 DarylWeb retention prune failed', body: String(err?.message ?? err), dedupeKey: 'retention-failure' });
       throw err;
     }
   }
@@ -334,7 +334,7 @@ const handler = async (job) => {
         scheduleId: p.scheduleId,
       });
     } catch (err) {
-      await notify.alert({ title: '🔴 NetWarden schedule fire failed', body: String(err?.message ?? err), dedupeKey: 'schedule-failure' });
+      await notify.alert({ title: '🔴 DarylWeb schedule fire failed', body: String(err?.message ?? err), dedupeKey: 'schedule-failure' });
       throw err;
     }
     const { notifyScheduleFired } = await import('../src/server/notify/events.ts');
@@ -352,7 +352,7 @@ const handler = async (job) => {
     try {
       summary = await runTelemetryIngest(adapter, telemetryProvider, new Date().toISOString());
     } catch (err) {
-      await notify.alert({ title: '🔴 NetWarden telemetry ingest failed', body: String(err?.message ?? err), dedupeKey: 'ingest-failure' });
+      await notify.alert({ title: '🔴 DarylWeb telemetry ingest failed', body: String(err?.message ?? err), dedupeKey: 'ingest-failure' });
       throw err;
     }
     if (summary.configured === false) {
@@ -368,7 +368,7 @@ const handler = async (job) => {
   } catch (err) {
     // Best-effort ops alert — swallowed internally; rethrow so hazo_jobs records the failure.
     await notify.alert({
-      title: '🔴 NetWarden sync failed',
+      title: '🔴 DarylWeb sync failed',
       body: String(err?.message ?? err),
       dedupeKey: 'sync-failure',
     });

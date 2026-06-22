@@ -13,7 +13,7 @@ const PNG_B64 =
 export async function GET() {
   const pngBuffer = Buffer.from(PNG_B64, 'base64');
   const FILES_ROOT =
-    process.env.NETWARDEN_FILES_ROOT ??
+    process.env.DARYLWEB_FILES_ROOT ??
     path.join(process.cwd(), 'data', 'group-images');
 
   let createdFileId: string | null = null;

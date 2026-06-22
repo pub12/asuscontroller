@@ -1,5 +1,5 @@
 // scripts/live-refresh.mjs — run exactly what the "Refresh" button does, against
-// the REAL router + REAL netwarden.sqlite. Read-only on the router (device sync
+// the REAL router + REAL darylweb.sqlite. Read-only on the router (device sync
 // getClientList + getBlockedMacs); writes only the local DB (captures offline
 // devices, mirrors live block state). Never calls setInternetAccess.
 //
@@ -9,7 +9,7 @@ import Database from 'better-sqlite3';
 const { AsusWrtProvider } = await import('../src/server/router/AsusWrtProvider.ts');
 const { runDeviceSync } = await import('../src/server/sync/runDeviceSync.ts');
 
-const db = new Database('netwarden.sqlite');
+const db = new Database('darylweb.sqlite');
 const adapter = {
   async rawQuery(sql, options) {
     const params = options?.params ?? [];

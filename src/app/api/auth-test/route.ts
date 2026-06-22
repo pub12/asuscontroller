@@ -61,7 +61,7 @@ async function runTests() {
   // resolution — not real token signing — so a deterministic throwaway secret keeps
   // the fetch-based autotest self-contained (no real .env needed; CI-safe). A real
   // JWT_SECRET from the environment, if present, is respected.
-  process.env.JWT_SECRET ??= 'netwarden-autotest-only-not-a-real-secret';
+  process.env.JWT_SECRET ??= 'darylweb-autotest-only-not-a-real-secret';
 
   const hazoSchema = getHazoAuthSchema();
 
@@ -89,7 +89,7 @@ async function runTests() {
     const plainUser = await createTestUser(adapter, {
       email: 'plain@test.local',
       role: 'role_plain_test',
-      permissions: ['netwarden:nw:user'],
+      permissions: ['darylweb:nw:user'],
       scopeId: 'scope-plain-test',
     });
 

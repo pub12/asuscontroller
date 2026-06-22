@@ -1,10 +1,10 @@
-# NetWarden
+# DarylWeb
 
 Household network control for ASUS routers — device presence, blocking, timers/schedules, and domain telemetry.
 
 ## Running locally
 
-NetWarden runs as **two processes**. Both must be running for the app to work fully.
+DarylWeb runs as **two processes**. Both must be running for the app to work fully.
 
 ```bash
 # Terminal 1 — Next.js web app (UI + API)

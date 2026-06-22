@@ -27,10 +27,10 @@ export default async function AdminPage() {
 
   if (!isSuperadmin) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-2 p-6 text-center">
+      <main className="flex min-h-screen bg-background flex-col items-center justify-center gap-2 p-6 text-center">
         <span className="text-4xl font-bold text-red-600">403</span>
-        <h1 className="text-xl font-semibold text-gray-900">Superadmin only</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-xl font-semibold text-foreground">Superadmin only</h1>
+        <p className="text-sm text-muted-foreground">
           You do not have permission to view this page.
         </p>
       </main>
@@ -59,7 +59,7 @@ export default async function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen p-6">
+    <main className="min-h-screen bg-background p-6">
       <AdminScreen grants={grants} requests={requests} users={users} />
     </main>
   );

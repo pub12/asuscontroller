@@ -1,5 +1,5 @@
 /**
- * Typed environment accessor for NetWarden.
+ * Typed environment accessor for DarylWeb.
  * Thin wrapper over hazo_env getEnv() / isDev / isTest / isProd.
  * Server-safe — never bundled to the client (no 'server-only' marker
  * needed here because we only re-export scalars; secrets live in src/server/secrets.ts).
@@ -61,7 +61,7 @@ export function getRouterProviderMode(): 'fake' | 'asus' {
   if (raw === undefined || raw === '') return 'fake';
   if (raw === 'fake' || raw === 'asus') return raw;
   throw new Error(
-    `[netwarden] ROUTER_PROVIDER has unrecognised value "${raw}". ` +
+    `[darylweb] ROUTER_PROVIDER has unrecognised value "${raw}". ` +
       `Expected "fake" or "asus".`
   );
 }
@@ -76,7 +76,7 @@ export function getTelemetryProviderMode(): 'fake' | 'nextdns' {
   if (raw === undefined || raw === '') return 'fake';
   if (raw === 'fake' || raw === 'nextdns') return raw;
   throw new Error(
-    `[netwarden] TELEMETRY_PROVIDER has unrecognised value "${raw}". ` +
+    `[darylweb] TELEMETRY_PROVIDER has unrecognised value "${raw}". ` +
       `Expected "fake" or "nextdns".`
   );
 }
@@ -92,7 +92,7 @@ export function getSyncIntervalSec(): number {
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== raw.trim()) {
     throw new Error(
-      `[netwarden] SYNC_INTERVAL_SEC has invalid value "${raw}". ` +
+      `[darylweb] SYNC_INTERVAL_SEC has invalid value "${raw}". ` +
         `Expected a positive integer (e.g. 60).`
     );
   }
@@ -110,7 +110,7 @@ export function getTelemetryIngestSec(): number {
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0 || String(parsed) !== raw.trim()) {
     throw new Error(
-      `[netwarden] TELEMETRY_INGEST_SEC has invalid value "${raw}". ` +
+      `[darylweb] TELEMETRY_INGEST_SEC has invalid value "${raw}". ` +
         `Expected a positive integer (e.g. 300).`
     );
   }
@@ -125,7 +125,7 @@ export function requireEnv(name: keyof AppEnvVars): string {
   const val = name === 'HAZO_ENV' ? getEnv() : process.env[name];
   if (!val) {
     throw new Error(
-      `[netwarden] Required environment variable "${name}" is not set. ` +
+      `[darylweb] Required environment variable "${name}" is not set. ` +
         `Check your .env file (see .env.example for the full list).`
     );
   }

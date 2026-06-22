@@ -10,10 +10,10 @@ export default async function SettingsPage() {
 
   if (!isSuperadmin) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-2 p-6 text-center">
+      <main className="flex min-h-screen bg-background flex-col items-center justify-center gap-2 p-6 text-center">
         <span className="text-4xl font-bold text-red-600">403</span>
-        <h1 className="text-xl font-semibold text-gray-900">Superadmin only</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-xl font-semibold text-foreground">Superadmin only</h1>
+        <p className="text-sm text-muted-foreground">
           You do not have permission to view this page.
         </p>
       </main>
@@ -34,32 +34,32 @@ export default async function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen p-6">
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-gray-900">Settings</h1>
+    <main className="min-h-screen bg-background p-6">
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
 
       <div className="space-y-6">
-        <section className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-base font-medium text-gray-800">Router</h2>
-          <dl className="space-y-1 text-sm text-gray-500">
+        <section className="rounded-lg border border-border bg-card p-4">
+          <h2 className="mb-2 text-base font-medium text-foreground">Router</h2>
+          <dl className="space-y-1 text-sm text-muted-foreground">
             <div className="flex gap-2">
-              <dt className="font-medium text-gray-700">Host:</dt>
+              <dt className="font-medium text-foreground">Host:</dt>
               <dd>configured via .env / staged spike</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="font-medium text-gray-700">User:</dt>
+              <dt className="font-medium text-foreground">User:</dt>
               <dd>configured via .env / staged spike</dd>
             </div>
           </dl>
         </section>
 
-        <section className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-base font-medium text-gray-800">Telemetry</h2>
-          <p className="text-sm text-gray-500">Provider undecided — NextDNS preferred.</p>
+        <section className="rounded-lg border border-border bg-card p-4">
+          <h2 className="mb-2 text-base font-medium text-foreground">Telemetry</h2>
+          <p className="text-sm text-muted-foreground">Provider undecided — NextDNS preferred.</p>
         </section>
 
-        <section className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-base font-medium text-gray-800">Polling</h2>
-          <p className="text-sm text-gray-500">Polling interval — placeholder from app config.</p>
+        <section className="rounded-lg border border-border bg-card p-4">
+          <h2 className="mb-2 text-base font-medium text-foreground">Polling</h2>
+          <p className="text-sm text-muted-foreground">Polling interval — placeholder from app config.</p>
         </section>
 
         <SyncPanel

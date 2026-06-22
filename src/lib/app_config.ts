@@ -1,4 +1,4 @@
-// App identity constants for NetWarden
+// App identity constants for DarylWeb
 export const APP_ID = 'nw';
-export const SUPERADMIN_PERMISSION = 'netwarden:nw:superadmin';
-export const USER_PERMISSION = 'netwarden:nw:user';
+export const SUPERADMIN_PERMISSION = 'darylweb:nw:superadmin';
+export const USER_PERMISSION = 'darylweb:nw:user';

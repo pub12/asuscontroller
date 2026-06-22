@@ -10,7 +10,7 @@
  *     2. Constructs a TelegramChannel instance (proves the adapter builds).
  *     3. Validates a test payload (validate() method).
  *     4. If TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID are in env, sends ONE live
- *        Telegram message — "NetWarden spike-notify test".
+ *        Telegram message — "DarylWeb spike-notify test".
  *     5. If creds are absent, skips the live send and logs "no creds — skipped".
  *     6. Prints PASS or FAIL with details.
  *
@@ -190,7 +190,7 @@ async function main() {
   console.log('\n── validate() contract ─────────────────────────────────────────');
 
   const testPayload = {
-    text: 'NetWarden spike-notify test',
+    text: 'DarylWeb spike-notify test',
     parse_mode: 'HTML',
     chat_id: chatId || '0',
   };
@@ -232,7 +232,7 @@ async function main() {
       };
       const result = await channel.send(
         {
-          text: '<b>NetWarden spike-notify test</b>\nContract smoke passed.',
+          text: '<b>DarylWeb spike-notify test</b>\nContract smoke passed.',
           parse_mode: 'HTML',
           chat_id: chatId,
         },

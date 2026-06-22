@@ -1,4 +1,4 @@
-# Phase 1 Feasibility Report — NetWarden Router + Telemetry Spike
+# Phase 1 Feasibility Report — DarylWeb Router + Telemetry Spike
 
 **Status:** Non-hardware device-sync slice BUILT and verified against FakeRouterProvider. §§1–4 (live router read/write/reboot/telemetry) remain pending the supervised spike session.
 **Last updated:** 2026-06-21
@@ -7,7 +7,7 @@
 
 ## Overview
 
-This report documents the findings from the Phase 1 feasibility spike for NetWarden's
+This report documents the findings from the Phase 1 feasibility spike for DarylWeb's
 router control and telemetry attribution layers. It is divided into:
 
 - **§§1–4** — hardware-dependent sections (router read/write/reboot, telemetry), filled
@@ -176,7 +176,7 @@ hazo_jobs (proven by scripts/spike-jobs.mjs — PASS, re-arm across real child-p
 ```
 
 **hazo_jobs table schema (key columns used by sync/status API):**
-- `type TEXT` — job type string (e.g. `netwarden.sync`)
+- `type TEXT` — job type string (e.g. `darylweb.sync`)
 - `status TEXT` — `pending | running | completed | failed | cancelled | scheduled`
 - `result TEXT` — JSON-serialised result payload (null until completed)
 - `submitted_at TEXT` — ISO8601, set on insert

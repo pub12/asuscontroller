@@ -1,4 +1,4 @@
-# NetWarden — Master Plan
+# DarylWeb — Master Plan
 Home-network monitoring & control for an ASUS ZenWiFi AX, built on the hazo_* ecosystem.
 Last updated: 2026-06-21
 
@@ -10,7 +10,7 @@ Last updated: 2026-06-21
 - Completed tasks collapse to one line; verbose writeups → CHANGELOG.md; decisions → DECISIONS.md.
 - The **Phase Map** and the checklist must never disagree — update both together.
 - Design is **mobile-first, desktop-responsive**. UI reference screens live in `design/screens/`
-  and the PRD is `design/netwarden_PRD_v2.md`.
+  and the PRD is `design/darylweb_PRD_v2.md`.
 - Keep dashboard counts, Phase Map size summaries, and the ledger current at end of each session.
 
 ## Progress dashboard
@@ -52,7 +52,7 @@ Recount commands:
   - Shell — Login screen, Settings skeleton — `0/2 done, 2S left`
 - **Phase 3 — RouterProvider + Device Sync (in progress)** — full sync slice shipped vs FakeRouterProvider; real AsusWrt productionisation pending the supervised hardware spike.
   - RouterProvider — AsusWrtProvider read+write, secrets, HazoError — `0/1 done, 1L left` (provider abstraction + FakeRouterProvider drop-in shipped; live AsusWrt productionisation hardware-blocked)
-  - Sync Job — netwarden.sync recurring 60s, presence, new-device detect — `1/1 done` (separate worker process; runDeviceSync core + sync-test)
+  - Sync Job — darylweb.sync recurring 60s, presence, new-device detect — `1/1 done` (separate worker process; runDeviceSync core + sync-test)
   - Devices — app_devices model + editable name/icon/notes/group — `1/1 done`
   - Explore (Devices) — searchable list, status chips, group badge — `1/1 done`
 - **Phase 4 — Blocking Core (done, fake-first)** — device block/unblock + reconcile + audit; full engine built + verified vs FakeRouterProvider. Live write is the only piece pending the supervised hardware spike (guarded live-block-test.mjs built + dry-verified, not yet fired).
@@ -74,7 +74,7 @@ Recount commands:
   - Schedules — recurring/future blocks; app_schedules; modal (screen copy 2); Schedules screen — `3/3 done`
 - **Phase 8 — Telemetry + Drill-down (done, fake-first)** — full telemetry vertical built + verified vs FakeTelemetryProvider (D14); NextDnsProvider stays a not-configured stub pending source decision.
   - TelemetryProvider — NextDnsProvider (+ Merlin alt, stock fallback) — `0/1 done, 1L left` (factory + FakeTelemetryProvider shipped; NextDnsProvider stub only — real source undecided)
-  - Jobs — netwarden.ingest (1–5min); netwarden.rollup (daily) + prune — `1/2 done` (ingest done: watermark+dedupe, verified live 39 inserted / re-run deduped; rollup deferred)
+  - Jobs — darylweb.ingest (1–5min); darylweb.rollup (daily) + prune — `1/2 done` (ingest done: watermark+dedupe, verified live 39 inserted / re-run deduped; rollup deferred)
   - Device Domain Views — top domains, recent timeline, first/last seen — `1/1 done` (drill-down on Device Detail; Today/7d UTC-day toggle; D15)
   - Empty States — hazo_ihelp copy for DoH / no-telemetry — `1/1 done` (monitoring-off empty state; telemetry-gap ops alert; D17)
 - **Phase 9 — Analytics (planned)** — presence time + sessionised estimates + charts.
@@ -124,7 +124,7 @@ Recount commands:
 **RouterProvider**
 - [-] (P1)(L) Productionise AsusWrtProvider — read+write, secrets via hazo_secure, HazoError handling, server-side only — PARTIAL: RouterProvider abstraction + FakeRouterProvider (deterministic, sim hooks) shipped as the drop-in; getRouterProvider() factory lazy-loads AsusWrt only for ROUTER_PROVIDER=asus; live AsusWrt productionisation hardware-blocked (supervised spike)
 **Sync Job**
-- [x] (P1)(M) netwarden.sync job (hazo_jobs recurring 60s) — listClients() → upsert app_devices, update presence, detect new — pure runDeviceSync core + standalone worker process (scripts/worker.mjs, npm run worker) + sync-test autotest; D4/D5 semantics
+- [x] (P1)(M) darylweb.sync job (hazo_jobs recurring 60s) — listClients() → upsert app_devices, update presence, detect new — pure runDeviceSync core + standalone worker process (scripts/worker.mjs, npm run worker) + sync-test autotest; D4/D5 semantics
 **Devices**
 - [x] (P1)(S) app_devices model + editable friendly name / icon / notes / primary group — deviceService + GET/PATCH/acknowledge APIs (field-ownership enforced)
 **Explore (Devices)**
@@ -136,7 +136,7 @@ Recount commands:
 - [x] (P1)(M) device.block / device.unblock through hazo_api routes — blockActions + /api/devices/[id]/block|unblock; superadmin-gated; devices-list-test green
 **State & Reconcile**
 - [x] (P1)(M) app_block_state + hazo_state reconcile markers (TTL + optimistic CAS to avoid double-apply) — hazo_state CAS/TTL desired-state marker; app_block_state PK device_id
-- [x] (P1)(M) Drift reconcile in netwarden.sync — compare intended vs router actual, re-apply or flag — reconcile pass in runDeviceSync re-applies intended blocks (never auto-unblocks); reconcile-test green
+- [x] (P1)(M) Drift reconcile in darylweb.sync — compare intended vs router actual, re-apply or flag — reconcile pass in runDeviceSync re-applies intended blocks (never auto-unblocks); reconcile-test green
 **Audit**
 - [x] (P1)(S) Audit every mutation via hazo_audit; device audit-history view — hazo_audit outbox on every mutation + worker drainOnce; timeline in Device Detail; audit-drain-test green
 **Device Detail**
@@ -171,12 +171,12 @@ Recount commands:
 - [x] (P1)(M) Schedules screen — active & upcoming one-shot + recurring; edit/cancel
 
 ### Phase 8 — Telemetry + Drill-down
-> Built fake-first (vs FakeTelemetryProvider, hermetic ingest-test autotest). NextDnsProvider stays a not-configured stub until the real telemetry source is chosen (D14). netwarden.rollup + hazo_ihelp DoH empty state deferred.
+> Built fake-first (vs FakeTelemetryProvider, hermetic ingest-test autotest). NextDnsProvider stays a not-configured stub until the real telemetry source is chosen (D14). darylweb.rollup + hazo_ihelp DoH empty state deferred.
 **TelemetryProvider**
 - [-] (P1)(L) Productionise TelemetryProvider — NextDnsProvider (+ MerlinSqliteProvider alt, AsusWebHistory fallback), API key via hazo_secure — PARTIAL: async factory + FakeTelemetryProvider (39-event deterministic seed) shipped; NextDnsProvider stub only (real source undecided)
 **Jobs**
-- [x] (P1)(M) netwarden.ingest job (recurring 1–5 min) → app_domain_events — watermark + half-open window + composite-PK pre-SELECT dedupe (D16); idempotent find-or-create schedule; boot one-shot; verified live (inserted 39, re-run deduped)
-- [ ] (P1)(M) netwarden.rollup job (daily, off-peak AEST) → app_domain_rollup_daily + app_device_presence; prune raw events past retention
+- [x] (P1)(M) darylweb.ingest job (recurring 1–5 min) → app_domain_events — watermark + half-open window + composite-PK pre-SELECT dedupe (D16); idempotent find-or-create schedule; boot one-shot; verified live (inserted 39, re-run deduped)
+- [ ] (P1)(M) darylweb.rollup job (daily, off-peak AEST) → app_domain_rollup_daily + app_device_presence; prune raw events past retention
 **Device Domain Views**
 - [x] (P1)(M) Device domain drill-down — top domains (by query volume), recent-domains timeline, first/last seen — Today/7d UTC-day toggle on Device Detail (D15); per-group monitoring-off read-side gate (D17)
 **Empty States**
@@ -240,7 +240,7 @@ Recount commands:
 | D11 · Fixed AEST (Australia/Sydney) for all schedule evaluation | Per-household timezone | Worker runs with `TZ=Australia/Sydney`; create-time wall-clock ("until 9pm") converted to an absolute instant in AEST (DST-safe via Intl) | Per-household / multi-TZ schedule evaluation | Multi-timezone households appear |
 | D12 · Fire-late on worker downtime | Exactly-on-time fires with catch-up policy | hazo_jobs default: past-due jobs promote to pending on worker restart and fire late; no staleness-skip; reconcile smooths resulting state | Add a staleness-skip / catch-up policy | Surprise late blocks are reported |
 | D13 · Recurring window = two linked rows | First-class window entity | A block-cron row + an unblock-cron row linked via `window_id` (migration 0005), reusing the one-shot/recurring machinery | Promote to a first-class window entity | A first-class window entity is warranted |
-| D14 · Telemetry vertical built fake-provider-first | Wire real NextDNS telemetry now | Full Phase-8 stack (TelemetryProvider iface → FakeTelemetryProvider 39-event deterministic seed → worker-pure runTelemetryIngest → netwarden.ingest worker schedule → per-device domain drill-down UI) built + verified vs a deterministic Fake; NextDnsProvider stays a not-configured stub and drops in unchanged | Swap to NextDnsProvider once the real-source decision (NextDNS vs Merlin SQLite vs ASUS history) unblocks | Real telemetry source chosen + credentials available |
+| D14 · Telemetry vertical built fake-provider-first | Wire real NextDNS telemetry now | Full Phase-8 stack (TelemetryProvider iface → FakeTelemetryProvider 39-event deterministic seed → worker-pure runTelemetryIngest → darylweb.ingest worker schedule → per-device domain drill-down UI) built + verified vs a deterministic Fake; NextDnsProvider stays a not-configured stub and drops in unchanged | Swap to NextDnsProvider once the real-source decision (NextDNS vs Merlin SQLite vs ASUS history) unblocks | Real telemetry source chosen + credentials available |
 | D15 · Drill-down "Today" = UTC day | Local (AEST) day | "Today"/"7d" windows use the UTC day (`toISOString().slice(0,10)`), reusing the SAME injected `todayIso` as the presence card directly above it on Device Detail — deliberate consistency; injection keeps a future move to local-day a one-call-site change (for both cards together) | Move presence + domains to local day together | A user-facing "today is wrong" report |
 | D16 · Ingest idempotency = watermark + composite-PK pre-SELECT | Rely on `SELECT changes()` for insert/dup counts | Watermark = `MAX(ts)`; provider queried over a half-open `[from,to)`; dedupe via a deterministic composite PK (`dom_`+mac+ts+domain) using a pre-SELECT existence check (+ `INSERT OR IGNORE` backstop). Chosen because the hazo_connect SQLite adapter doesn't reliably surface mutation row counts (same reason pruneEvents COUNTs-then-DELETEs); verified live (boot ingest inserted 39, re-run fetched 1 / inserted 0 / skipped 1) | — | — |
 | D17 · Per-group monitoring flag = read-side gate | Suppress/delete events at ingest time | `app_groups.monitoring_enabled` (DEFAULT 1); the drill-down read fn checks `COALESCE(g.monitoring_enabled,1)` via the device's primary group and returns an empty monitoring-off result BEFORE reading any events — data still flows into the table but is suppressed on read; null/no group ⇒ on | Ingest-time suppression or a retention purge if a stronger guarantee is needed | A "don't even store it" requirement appears |

@@ -56,7 +56,7 @@ async function applyTestSchema(adapter: import('hazo_testing').AugmentedAdapter,
 }
 
 async function runTests() {
-  process.env.JWT_SECRET ??= 'netwarden-autotest-only-not-a-real-secret';
+  process.env.JWT_SECRET ??= 'darylweb-autotest-only-not-a-real-secret';
 
   const hazoSchema = getHazoAuthSchema();
 
@@ -79,7 +79,7 @@ async function runTests() {
     const plainUser = await createTestUser(adapter, {
       email: 'plain@block-api-test.local',
       role: 'role_plain_block_api',
-      permissions: ['netwarden:nw:user'],
+      permissions: ['darylweb:nw:user'],
       scopeId: 'scope-plain-block-api',
     });
 

@@ -1,7 +1,7 @@
 import { registerScenario, assertEqual } from 'hazo_ui/test-harness';
 registerScenario('scaffold_smoke', {
   name: 'Scaffold — harness loads',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'harness renders and a trivial assertion passes',
     doc: { description: 'Confirms the AutoTest harness mounts and can run a case.', inputs: 'none', expectedOutputs: '1 === 1 passes.', caveats: 'None' },
@@ -11,7 +11,7 @@ registerScenario('scaffold_smoke', {
 
 registerScenario('schema_roundtrip', {
   name: 'Schema — all 10 tables + app_devices round-trip',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'migrations create all 10 app_ tables; app_devices insert/select round-trips; re-run idempotent',
     doc: {
@@ -33,15 +33,15 @@ registerScenario('schema_roundtrip', {
 
 registerScenario('auth_roles', {
   name: 'Auth — role/permission resolution + first-superadmin',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'superadmin permission resolves; plain user excluded; first-superadmin grant is idempotent; non-matching email is no-op',
     doc: {
       description: [
         'Calls /api/auth-test which spins up isolated in-memory SQLite DBs (hazo_testing),',
         'creates test users via createTestUser, and validates five contract assertions:',
-        '(1) a user seeded with netwarden:nw:superadmin is detected as superadmin,',
-        '(2) a plain user with netwarden:nw:user is NOT superadmin,',
+        '(1) a user seeded with darylweb:nw:superadmin is detected as superadmin,',
+        '(2) a plain user with darylweb:nw:user is NOT superadmin,',
         '(3) ensureFirstSuperadmin grants the permission when no holder exists,',
         '(4) a second call is a no-op (no duplicate rows),',
         '(5) calling with a non-matching email does nothing.',
@@ -66,7 +66,7 @@ registerScenario('auth_roles', {
 
 registerScenario('api_foundation', {
   name: 'API Foundation — envelopes, OpenAPI, Swagger UI',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   // Note: authenticated /api/me returning roles is proven by the auth_roles resolver
   // test (/api/auth-test); we only test the unauthenticated 401 path here.
   cases: [
@@ -141,7 +141,7 @@ registerScenario('api_foundation', {
 
 registerScenario('secure_smoke', {
   name: 'Secure — secrets server-only + crypto round-trip',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   // Top-level doc: secrets are resolved server-side only and never bundled to the client.
   // The hazo_secure LookupSecretsProvider reads plain env var names; field crypto uses
   // EnvKeyProvider (prefix HAZO_FIELD_KEY) for AES-256-GCM envelope encryption.
@@ -172,14 +172,14 @@ registerScenario('secure_smoke', {
 
 registerScenario('settings_gate', {
   name: 'Settings — superadmin gate allows superadmin, denies plain user',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/settings-gate-test → superadmin_allowed_ok and plain_user_denied_ok both true',
     doc: {
       description: [
         'Calls /api/settings-gate-test which spins up an isolated in-memory SQLite DB (hazo_testing),',
-        'creates a superadmin user (with netwarden:nw:superadmin permission) and a plain user',
-        '(with netwarden:nw:user permission), then asserts via userHasSuperadmin that:',
+        'creates a superadmin user (with darylweb:nw:superadmin permission) and a plain user',
+        '(with darylweb:nw:user permission), then asserts via userHasSuperadmin that:',
         '(1) the superadmin is detected as superadmin (superadmin_allowed_ok),',
         '(2) the plain user is NOT detected as superadmin (plain_user_denied_ok).',
         'This validates the gate logic used by the Settings server component.',
@@ -201,7 +201,7 @@ registerScenario('settings_gate', {
 
 registerScenario('state_audit_schema', {
   name: 'Schema — hazo_state + hazo_audit tables present',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'migrations create hazo_app_state + 3 hazo_audit tables; hazo_audit_intent round-trip passes',
     doc: {
@@ -227,7 +227,7 @@ registerScenario('state_audit_schema', {
 
 registerScenario('block_sim', {
   name: 'Blocking Core — FakeRouterProvider block simulation',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/block-sim-test → block/unblock/force/capability assertions all pass',
     doc: {
@@ -268,7 +268,7 @@ registerScenario('block_sim', {
  */
 registerScenario('block_service', {
   name: 'Blocking Core — blockDevice / unblockDevice service',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/block-service-test → all block/unblock/guard assertions pass',
     doc: {
@@ -318,7 +318,7 @@ registerScenario('block_service', {
  */
 registerScenario('block_api', {
   name: 'Blocking Core — superadmin-gated block/unblock API action layer',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/block-api-test → all gate + mapping assertions pass',
     doc: {
@@ -358,7 +358,7 @@ registerScenario('block_api', {
  */
 registerScenario('reconcile', {
   name: 'Drift Reconcile — re-apply lost router block rule',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/reconcile-test → drift reapplied, router re-blocked, audit emitted, no redundant reapply',
     doc: {
@@ -399,7 +399,7 @@ registerScenario('reconcile', {
  */
 registerScenario('audit_drain', {
   name: 'Audit Drain — outbox capture → drainOnce → field rows',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/audit-drain-test → outbox written, drained, field rows present',
     doc: {
@@ -437,7 +437,7 @@ registerScenario('audit_drain', {
  */
 registerScenario('devices_list', {
   name: 'Devices List — mergeBlockState block annotation',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/devices-list-test → merged_ok and pure_ok both true',
     doc: {
@@ -466,7 +466,7 @@ registerScenario('devices_list', {
 
 registerScenario('device_activity', {
   name: 'Device Detail — getDeviceActivity presence + audit timeline',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/device-activity-test → presence aggregation + merged event/field timeline',
     doc: {
@@ -504,7 +504,7 @@ registerScenario('device_activity', {
 
 registerScenario('sync_test', {
   name: 'Device Sync — full lifecycle (fake provider)',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/sync-test → 10 inserts, 10 updates + presence, 1 offline, 1 new device',
     doc: {
@@ -549,7 +549,7 @@ registerScenario('sync_test', {
  */
 registerScenario('authorize', {
   name: 'Permissions — authorizeCapability decision engine',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/authorize-test → all authz decision assertions pass',
     doc: {
@@ -594,7 +594,7 @@ registerScenario('authorize', {
  */
 registerScenario('requests_api', {
   name: 'Permissions — requests submit/approve/decline + filterVisibleRequests',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/requests-test → all request lifecycle + visibility assertions pass',
     doc: {
@@ -631,7 +631,7 @@ registerScenario('requests_api', {
 
 registerScenario('groups_crud', {
   name: 'Groups — CRUD + membership lifecycle',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/groups-test → create, member count, primary assignment, block status, remove, delete all pass',
     doc: {
@@ -672,7 +672,7 @@ registerScenario('groups_crud', {
 
 registerScenario('group_images', {
   name: 'Groups — image upload, store, and serve (local seam)',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/groups-image-test → roundtrip, validation, traversal-safe, missing-null all pass',
     doc: {
@@ -708,7 +708,7 @@ registerScenario('group_images', {
 
 registerScenario('grants', {
   name: 'Permissions — grantsService CRUD lifecycle',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/grants-test → all grant/request CRUD assertions pass',
     doc: {
@@ -744,7 +744,7 @@ registerScenario('grants', {
 
 registerScenario('group_block', {
   name: 'Groups — group block-all/unblock-all + capability guard',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/group-block-test → all group block/unblock + authz assertions pass',
     doc: {
@@ -787,7 +787,7 @@ registerScenario('group_block', {
 
 registerScenario('notify-events', {
   name: 'Notify Events — domain-event alert mapping helpers',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'device_block, device_unblock, group_block_all, new_devices, zero_noop, escape, unconfigured, schedule_fired all pass',
     doc: {
@@ -819,7 +819,7 @@ registerScenario('notify-events', {
  */
 registerScenario('schedule_timer', {
   name: 'Schedules — createTimer blocks now + schedules unblock',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/schedules-test → timer_ok true',
     doc: {
@@ -848,7 +848,7 @@ registerScenario('schedule_timer', {
  */
 registerScenario('schedule_future_block', {
   name: 'Schedules — createFutureBlock pending one-shot, no immediate action',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/schedules-test → future_block_ok true',
     doc: {
@@ -876,7 +876,7 @@ registerScenario('schedule_future_block', {
  */
 registerScenario('schedule_fire', {
   name: 'Schedules — runScheduleFire fires schedule, device blocked, row done',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/schedules-test → fire_ok true',
     doc: {
@@ -904,7 +904,7 @@ registerScenario('schedule_fire', {
  */
 registerScenario('schedule_recurring', {
   name: 'Schedules — createRecurring active cron row; listSchedules returns it',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/schedules-test → recurring_ok true',
     doc: {
@@ -932,7 +932,7 @@ registerScenario('schedule_recurring', {
  */
 registerScenario('schedule_early_unblock', {
   name: 'Schedules — early unblock cancels pending job + schedule row',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/schedules-test → early_unblock_ok true',
     doc: {
@@ -961,7 +961,7 @@ registerScenario('schedule_early_unblock', {
  */
 registerScenario('schedule_authz', {
   name: 'Schedules — authorizeCapability enforces schedule.create',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/schedules-test → schedule_authz_ok true',
     doc: {
@@ -986,7 +986,7 @@ registerScenario('schedule_authz', {
 
 registerScenario('notify', {
   name: 'Notify — NotifyProvider ops-alerting seam',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'send, dedupe, swallow, noop-unconfigured checks all pass',
     doc: {
@@ -1018,7 +1018,7 @@ registerScenario('notify', {
  */
 registerScenario('retention', {
   name: 'Retention Pruning — raw domain events pruned, rollups untouched',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/retention-test → all pruning + isolation assertions pass',
     doc: {
@@ -1063,7 +1063,7 @@ registerScenario('retention', {
  */
 registerScenario('telemetry_ingest', {
   name: 'Telemetry Ingest — cold start, dedupe, unknown-MAC, blocked flag, not-configured no-op',
-  pkg: 'netwarden',
+  pkg: 'darylweb',
   cases: [{
     name: 'GET /api/ingest-test → all 6 ingest lifecycle assertions pass',
     doc: {

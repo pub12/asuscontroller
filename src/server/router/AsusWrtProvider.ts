@@ -408,7 +408,7 @@ export class AsusWrtProvider implements RouterProvider {
       } else {
         macs.push(targetMac);
         enables.push('2');
-        names.push('NetWarden block');
+        names.push('DarylWeb block');
         daytimes.push('<');
       }
     } else {

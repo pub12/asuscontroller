@@ -26,8 +26,8 @@ export async function GET(): Promise<Response> {
   try {
     // --- Secret round-trip ---
     // Set a temporary env var, read it back through a LookupSecretsProvider.
-    const TEST_VAR = '__NETWARDEN_SECRET_TEST__';
-    const TEST_VAL = 'netwarden-secret-smoke-' + Date.now();
+    const TEST_VAR = '__DARYLWEB_SECRET_TEST__';
+    const TEST_VAL = 'darylweb-secret-smoke-' + Date.now();
     process.env[TEST_VAR] = TEST_VAL;
 
     const provider = new LookupSecretsProvider((name) => process.env[name]);
@@ -42,7 +42,7 @@ export async function GET(): Promise<Response> {
     const testKeyBytes = new Uint8Array(32).fill(0x42); // deterministic test key
     const keys = new StaticKeyProvider('smoke-v1', { 'smoke-v1': testKeyBytes });
 
-    const plaintext = 'netwarden-crypto-smoke';
+    const plaintext = 'darylweb-crypto-smoke';
     const encrypted = await encryptField(plaintext, { keys });
     const decrypted = await decryptField(encrypted, { keys });
     const crypto_roundtrip_ok = decrypted === plaintext;

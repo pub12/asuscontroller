@@ -52,7 +52,7 @@ function DeviceIconComp({ icon }: { icon: string }) {
     generic: HardDrive,
   };
   const Comp = map[icon as DeviceIconName] ?? HardDrive;
-  return <Comp className="h-5 w-5 text-gray-500" />;
+  return <Comp className="h-5 w-5 text-muted-foreground" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,12 +186,12 @@ export function CreateGroupScreen({ devices }: Props) {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.back()}
-          className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label="Go back"
         >
           ← Back
         </button>
-        <h1 className="text-xl font-semibold text-gray-900">Create Group</h1>
+        <h1 className="text-xl font-semibold text-foreground">Create Group</h1>
       </div>
 
       {/* Image upload */}
@@ -201,15 +201,15 @@ export function CreateGroupScreen({ devices }: Props) {
             <img
               src={imagePreview}
               alt="Group avatar"
-              className="h-20 w-20 rounded-full object-cover border-2 border-gray-200"
+              className="h-20 w-20 rounded-full object-cover border-2 border-border"
             />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-50">
-              <span className="text-2xl text-gray-400">👥</span>
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted">
+              <span className="text-2xl text-muted-foreground">👥</span>
             </div>
           )}
           {/* Camera badge */}
-          <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-teal-700 text-white text-xs">
+          <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
             {uploading ? '…' : '+'}
           </span>
           <input
@@ -220,12 +220,12 @@ export function CreateGroupScreen({ devices }: Props) {
             disabled={uploading}
           />
         </label>
-        {uploading && <p className="text-xs text-gray-500">Uploading…</p>}
+        {uploading && <p className="text-xs text-muted-foreground">Uploading…</p>}
       </div>
 
       {/* Group name */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-gray-700">Group Name</label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Group Name</label>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -235,16 +235,16 @@ export function CreateGroupScreen({ devices }: Props) {
 
       {/* Group type toggle */}
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">Group Type</label>
-        <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+        <label className="mb-2 block text-sm font-medium text-foreground">Group Type</label>
+        <div className="flex rounded-lg border border-border bg-muted p-1">
           {(['person', 'generic'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
               className={`flex-1 rounded-md py-2 text-sm font-medium capitalize transition-colors ${
                 type === t
-                  ? 'bg-white text-teal-700 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-card text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -255,14 +255,14 @@ export function CreateGroupScreen({ devices }: Props) {
 
       {/* Color picker */}
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">Color</label>
+        <label className="mb-2 block text-sm font-medium text-foreground">Color</label>
         <div className="flex gap-3">
           {COLOR_PALETTE.map((c) => (
             <button
               key={c}
               onClick={() => setColor(c)}
               className={`h-9 w-9 rounded-full transition-transform ${
-                color === c ? 'ring-2 ring-offset-2 ring-teal-700 scale-110' : 'hover:scale-105'
+                color === c ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-105'
               }`}
               style={{ background: c }}
               aria-label={`Color ${c}`}
@@ -274,15 +274,15 @@ export function CreateGroupScreen({ devices }: Props) {
       {/* Member picker */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <label className="text-sm font-medium text-gray-700">Add Members</label>
-          <span className="text-sm text-teal-700 font-medium">
+          <label className="text-sm font-medium text-foreground">Add Members</label>
+          <span className="text-sm text-primary font-medium">
             {selectedDeviceIds.size} Selected
           </span>
         </div>
 
         {/* Search */}
         <div className="relative mb-2">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={deviceSearch}
             onChange={(e) => setDeviceSearch(e.target.value)}
@@ -294,7 +294,7 @@ export function CreateGroupScreen({ devices }: Props) {
         {/* Device list */}
         <div className="space-y-1.5 max-h-64 overflow-y-auto">
           {filteredDevices.length === 0 && (
-            <p className="py-4 text-center text-sm text-gray-500">No devices found.</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">No devices found.</p>
           )}
           {filteredDevices.map((d) => {
             const id = d.id ?? '';
@@ -305,27 +305,27 @@ export function CreateGroupScreen({ devices }: Props) {
                 onClick={() => toggleDevice(id)}
                 className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
                   checked
-                    ? 'border-teal-300 bg-teal-50'
-                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                    ? 'border-primary/40 bg-primary/10'
+                    : 'border-border bg-card hover:bg-accent'
                 }`}
               >
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted">
                   <DeviceIconComp icon={deviceIcon(d)} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-800">
+                  <p className="truncate text-sm font-medium text-foreground">
                     {deviceDisplayName(d)}
                   </p>
                   {d.current_ip && (
-                    <p className="truncate text-xs text-gray-500">{d.current_ip}</p>
+                    <p className="truncate text-xs text-muted-foreground">{d.current_ip}</p>
                   )}
                 </div>
                 {/* Checkbox */}
                 <div
                   className={`h-5 w-5 flex-shrink-0 rounded border transition-colors ${
                     checked
-                      ? 'border-teal-700 bg-teal-700'
-                      : 'border-gray-300 bg-white'
+                      ? 'border-primary bg-primary'
+                      : 'border-border bg-card'
                   }`}
                 >
                   {checked && (
@@ -345,7 +345,7 @@ export function CreateGroupScreen({ devices }: Props) {
         <Button
           onClick={() => { void handleSubmit(); }}
           disabled={isLoading || !name.trim()}
-          className="w-full bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-50 py-3 rounded-xl text-sm font-semibold"
+          className="w-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 py-3 rounded-xl text-sm font-semibold"
         >
           {isLoading ? 'Creating…' : '👥 Create Group'}
         </Button>

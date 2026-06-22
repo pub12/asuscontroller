@@ -81,9 +81,9 @@ export function SyncPanel({ providerMode, intervalSec, deviceCount, blockedCount
   };
 
   return (
-    <section className="rounded-lg border border-gray-200 p-4">
+    <section className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-medium text-gray-800">Router &amp; Sync</h2>
+        <h2 className="text-base font-medium text-foreground">Router &amp; Sync</h2>
         <Button
           size="sm"
           onClick={handleRunSync}
@@ -92,24 +92,24 @@ export function SyncPanel({ providerMode, intervalSec, deviceCount, blockedCount
           {isPending ? 'Running…' : 'Run sync now'}
         </Button>
       </div>
-      <dl className="space-y-1 text-sm text-gray-500">
+      <dl className="space-y-1 text-sm text-muted-foreground">
         <div className="flex gap-2">
-          <dt className="font-medium text-gray-700">Provider:</dt>
+          <dt className="font-medium text-foreground">Provider:</dt>
           <dd>{providerMode}</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium text-gray-700">Interval:</dt>
+          <dt className="font-medium text-foreground">Interval:</dt>
           <dd>{intervalSec}s</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium text-gray-700">Devices:</dt>
+          <dt className="font-medium text-foreground">Devices:</dt>
           <dd>
             {deviceCount} known
             {blockedCount > 0 ? `, ${blockedCount} blocked` : ''}
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium text-gray-700">Last run:</dt>
+          <dt className="font-medium text-foreground">Last run:</dt>
           <dd>
             {syncStatus?.last_run_at
               ? new Date(syncStatus.last_run_at).toLocaleString()
@@ -117,11 +117,11 @@ export function SyncPanel({ providerMode, intervalSec, deviceCount, blockedCount
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium text-gray-700">Last status:</dt>
+          <dt className="font-medium text-foreground">Last status:</dt>
           <dd>{syncStatus?.status ?? '—'}</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="font-medium text-gray-700">Last summary:</dt>
+          <dt className="font-medium text-foreground">Last summary:</dt>
           <dd>{syncStatus ? formatSummary(syncStatus.summary) : '—'}</dd>
         </div>
       </dl>

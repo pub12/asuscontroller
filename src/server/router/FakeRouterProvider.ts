@@ -29,13 +29,13 @@ import type { RouterProvider, RouterClient, AccessResult, CapabilityMap } from '
  * so a scheduled unblock fired by the worker gets resurrected by the web app's
  * pull-reconcile (and vice-versa). Pointing both production-path instances at
  * the same file makes the fake behave like a single shared router, which is the
- * whole point of a faithful fake. Honors NETWARDEN_FAKE_ROUTER_STATE if set.
+ * whole point of a faithful fake. Honors DARYLWEB_FAKE_ROUTER_STATE if set.
  *
  * Autotests deliberately do NOT pass a persistPath, so they stay fully
  * hermetic (pure in-memory, no cross-test or cross-process bleed).
  */
 export function fakeRouterStatePath(): string {
-  return process.env.NETWARDEN_FAKE_ROUTER_STATE || join(process.cwd(), '.fake-router-state.json');
+  return process.env.DARYLWEB_FAKE_ROUTER_STATE || join(process.cwd(), '.fake-router-state.json');
 }
 
 // ---------------------------------------------------------------------------

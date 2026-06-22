@@ -1,9 +1,9 @@
 /**
- * PM2 process definitions for NetWarden.
+ * PM2 process definitions for DarylWeb.
  *
  * Two long-running processes, both REQUIRED in production:
- *   - netwarden-web    : the Next.js app (served on PORT, default 3051 here)
- *   - netwarden-worker : the standalone sync/timer worker (fires scheduled
+ *   - darylweb-web    : the Next.js app (served on PORT, default 3051 here)
+ *   - darylweb-worker : the standalone sync/timer worker (fires scheduled
  *                        block/unblock jobs, device sync, telemetry ingest).
  *                        The web app does NOT do this work — the worker must run.
  *
@@ -22,7 +22,7 @@
 module.exports = {
   apps: [
     {
-      name: 'netwarden-web',
+      name: 'darylweb-web',
       // scripts/next.mjs resolves the correct Next bin, injects `-p $PORT`,
       // and adds the react-server import condition for the web app itself.
       script: 'scripts/next.mjs',
@@ -38,7 +38,7 @@ module.exports = {
       max_restarts: 10,
     },
     {
-      name: 'netwarden-worker',
+      name: 'darylweb-worker',
       script: 'scripts/worker.mjs',
       cwd: __dirname,
       instances: 1,

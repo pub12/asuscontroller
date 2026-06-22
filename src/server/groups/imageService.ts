@@ -7,7 +7,7 @@ import { uploadProcessedImage } from 'hazo_images/server';
 
 // ── Storage root ──────────────────────────────────────────────────────────────
 const FILES_ROOT =
-  process.env.NETWARDEN_FILES_ROOT ?? path.join(process.cwd(), 'data', 'group-images');
+  process.env.DARYLWEB_FILES_ROOT ?? path.join(process.cwd(), 'data', 'group-images');
 
 // ── Allowed MIME types and size limit ─────────────────────────────────────────
 const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);

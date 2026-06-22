@@ -1,4 +1,4 @@
--- 0001_init.sql — NetWarden full schema (PRD §8). Idempotent.
+-- 0001_init.sql — DarylWeb full schema (PRD §8). Idempotent.
 
 CREATE TABLE IF NOT EXISTS app_groups (
   id TEXT PRIMARY KEY,

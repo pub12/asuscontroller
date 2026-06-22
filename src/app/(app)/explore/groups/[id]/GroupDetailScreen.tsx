@@ -110,12 +110,12 @@ function RequestAccessDialog({
       sizeWidth="420px"
     >
       <div className="space-y-4 p-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           You don&apos;t have permission to {state?.capability === 'group.block' ? 'block' : 'unblock'} this group.
           Submit a request and a superadmin will review it.
         </p>
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Note (optional)</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">Note (optional)</label>
           <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -385,7 +385,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
       {/* Back */}
       <button
         onClick={() => router.back()}
-        className="text-sm text-gray-500 hover:text-gray-700"
+        className="text-sm text-muted-foreground hover:text-foreground"
         aria-label="Go back"
       >
         ← Back
@@ -408,10 +408,10 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
           </span>
         )}
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold text-gray-900 truncate">{group.name ?? group.id}</h1>
-          <p className="text-sm text-gray-500">{onlineCount} of {memberCount} online</p>
+          <h1 className="text-xl font-semibold text-foreground truncate">{group.name ?? group.id}</h1>
+          <p className="text-sm text-muted-foreground">{onlineCount} of {memberCount} online</p>
           {isBlocked && (
-            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-500/15 dark:text-red-400">
               <Ban className="h-3 w-3" />
               Blocked
             </span>
@@ -423,7 +423,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
           size="sm"
           onClick={() => { void handleGroupBlock(isBlocked ? 'unblock' : 'block'); }}
           disabled={isPending}
-          className={isBlocked ? '' : 'bg-teal-700 text-white hover:bg-teal-800'}
+          className={isBlocked ? '' : 'bg-primary text-primary-foreground hover:bg-primary/90'}
         >
           {isBlocked ? (
             <><ShieldCheck className="mr-1 h-4 w-4" /> Unblock all</>
@@ -434,9 +434,9 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
       </div>
 
       {/* Members */}
-      <section className="rounded-lg border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-          <h2 className="text-sm font-medium text-gray-800">Members ({memberCount})</h2>
+      <section className="rounded-lg border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="text-sm font-medium text-foreground">Members ({memberCount})</h2>
           {isSuperadmin && (
             <Button
               variant="outline"
@@ -449,27 +449,27 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
           )}
         </div>
         {members.length === 0 ? (
-          <p className="p-4 text-sm text-gray-500">No members yet.</p>
+          <p className="p-4 text-sm text-muted-foreground">No members yet.</p>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-border">
             {members.map((m) => (
               <li key={m.id} className="flex items-center gap-3 px-4 py-2.5">
                 <span
                   className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                    m.status === 'online' ? 'bg-green-500' : 'bg-gray-300'
+                    m.status === 'online' ? 'bg-green-500' : 'bg-muted-foreground/40'
                   }`}
                 />
-                <span className="flex-1 truncate text-sm text-gray-800">
+                <span className="flex-1 truncate text-sm text-foreground">
                   {deviceDisplayName(m)}
                 </span>
                 {Number(m.is_blocked) === 1 && (
-                  <span className="text-xs text-red-600">Blocked</span>
+                  <span className="text-xs text-red-600 dark:text-red-400">Blocked</span>
                 )}
                 {isSuperadmin && (
                   <button
                     onClick={() => { void handleRemoveMember(m.id ?? ''); }}
                     disabled={isPending}
-                    className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                    className="text-muted-foreground hover:text-red-600 disabled:opacity-50"
                     aria-label={`Remove ${deviceDisplayName(m)}`}
                   >
                     <X className="h-4 w-4" />
@@ -483,8 +483,8 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
 
       {/* Manage section — superadmin only */}
       {isSuperadmin && (
-        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-sm font-medium text-gray-800">Manage</h2>
+        <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h2 className="text-sm font-medium text-foreground">Manage</h2>
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -508,12 +508,12 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
 
       {/* Privacy — superadmin only */}
       {isSuperadmin && (
-        <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-          <h2 className="text-sm font-medium text-gray-800">Privacy</h2>
+        <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <h2 className="text-sm font-medium text-foreground">Privacy</h2>
           <div className="flex items-center justify-between">
             <div className="pr-4">
-              <p className="text-sm text-gray-700">Domain monitoring</p>
-              <p className="text-xs text-gray-500">When off, per-device domain insights are hidden for this group&apos;s members.</p>
+              <p className="text-sm text-foreground">Domain monitoring</p>
+              <p className="text-xs text-muted-foreground">When off, per-device domain insights are hidden for this group&apos;s members.</p>
             </div>
             <button
               type="button"
@@ -521,36 +521,36 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
               aria-checked={monitoringEnabled}
               disabled={monitoringSaving || isPending}
               onClick={() => { void handleToggleMonitoring(); }}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${monitoringEnabled ? 'bg-teal-700' : 'bg-gray-300'}`}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${monitoringEnabled ? 'bg-primary' : 'bg-input'}`}
               aria-label="Toggle domain monitoring"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${monitoringEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-card transition-transform ${monitoringEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
             </button>
           </div>
         </section>
       )}
 
       {/* Analytics placeholder */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4">
-        <h2 className="text-sm font-medium text-gray-800 mb-2">Analytics</h2>
-        <p className="text-sm text-gray-500">Coming soon — usage stats and bandwidth analytics for this group.</p>
+      <section className="rounded-lg border border-border bg-card p-4">
+        <h2 className="text-sm font-medium text-foreground mb-2">Analytics</h2>
+        <p className="text-sm text-muted-foreground">Coming soon — usage stats and bandwidth analytics for this group.</p>
       </section>
 
       {/* Schedules */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
-        <h2 className="text-sm font-medium text-gray-800">Schedules</h2>
+      <section className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <h2 className="text-sm font-medium text-foreground">Schedules</h2>
         {isSuperadmin ? (
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowTimerModal(true)}
-            className="gap-1.5 text-teal-700 border-teal-200 hover:bg-teal-50"
+            className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
           >
             <CalendarClock className="h-4 w-4" />
             Set timer / Schedule
           </Button>
         ) : (
-          <p className="text-sm text-gray-500">Superadmin required to manage schedules.</p>
+          <p className="text-sm text-muted-foreground">Superadmin required to manage schedules.</p>
         )}
       </section>
 
@@ -572,7 +572,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
         onCancel={() => setShowDeleteConfirm(false)}
         sizeWidth="420px"
       >
-        <div className="p-4 text-sm text-gray-600">
+        <div className="p-4 text-sm text-muted-foreground">
           This will permanently delete the group and remove all member assignments. Devices will not be deleted.
         </div>
       </HazoUiDialog>
@@ -598,14 +598,14 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
                 <img
                   src={editImagePreview}
                   alt="Group avatar"
-                  className="h-16 w-16 rounded-full object-cover border-2 border-gray-200"
+                  className="h-16 w-16 rounded-full object-cover border-2 border-border"
                 />
               ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-50">
-                  <span className="text-xl text-gray-400">👥</span>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-border bg-muted">
+                  <span className="text-xl text-muted-foreground">👥</span>
                 </div>
               )}
-              <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-teal-700 text-white text-xs">
+              <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
                 {editUploading ? '…' : '+'}
               </span>
               <input
@@ -620,14 +620,14 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
 
           {/* Name */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
             <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
           </div>
 
           {/* Type */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Type</label>
-            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <label className="mb-1 block text-sm font-medium text-foreground">Type</label>
+            <div className="flex rounded-lg border border-border bg-muted p-1">
               {(['person', 'generic'] as const).map((t) => (
                 <button
                   key={t}
@@ -635,8 +635,8 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
                   onClick={() => setEditType(t)}
                   className={`flex-1 rounded-md py-1.5 text-sm font-medium capitalize transition-colors ${
                     editType === t
-                      ? 'bg-white text-teal-700 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
+                      ? 'bg-card text-primary shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -647,7 +647,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
 
           {/* Color */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">Color</label>
+            <label className="mb-2 block text-sm font-medium text-foreground">Color</label>
             <div className="flex gap-2">
               {COLOR_PALETTE.map((c) => (
                 <button
@@ -655,7 +655,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
                   type="button"
                   onClick={() => setEditColor(c)}
                   className={`h-8 w-8 rounded-full transition-transform ${
-                    editColor === c ? 'ring-2 ring-offset-2 ring-teal-700 scale-110' : 'hover:scale-105'
+                    editColor === c ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'hover:scale-105'
                   }`}
                   style={{ background: c }}
                   aria-label={`Color ${c}`}
@@ -693,7 +693,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
       >
         <div className="p-4 space-y-3">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
@@ -703,7 +703,7 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
           </div>
           <div className="max-h-64 overflow-y-auto space-y-1.5">
             {filteredAddable.length === 0 && (
-              <p className="py-4 text-center text-sm text-gray-500">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 {addableDevices.length === 0 ? 'All devices are already members.' : 'No devices match your search.'}
               </p>
             )}
@@ -716,19 +716,19 @@ export function GroupDetailScreen({ group, members, allDevices, isSuperadmin }: 
                   onClick={() => toggleAddDevice(id)}
                   className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
                     checked
-                      ? 'border-teal-300 bg-teal-50'
-                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                      ? 'border-primary/40 bg-primary/10'
+                      : 'border-border bg-card hover:bg-accent'
                   }`}
                 >
                   <span
                     className={`h-2 w-2 flex-shrink-0 rounded-full ${
-                      d.status === 'online' ? 'bg-green-500' : 'bg-gray-300'
+                      d.status === 'online' ? 'bg-green-500' : 'bg-muted-foreground/40'
                     }`}
                   />
-                  <span className="flex-1 truncate text-sm text-gray-800">{deviceDisplayName(d)}</span>
+                  <span className="flex-1 truncate text-sm text-foreground">{deviceDisplayName(d)}</span>
                   <div
                     className={`h-5 w-5 flex-shrink-0 rounded border transition-colors ${
-                      checked ? 'border-teal-700 bg-teal-700' : 'border-gray-300 bg-white'
+                      checked ? 'border-primary bg-primary' : 'border-border bg-card'
                     }`}
                   >
                     {checked && (

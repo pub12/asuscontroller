@@ -1,7 +1,7 @@
 // scripts/sync-once.mjs — one-shot real-router device sync (plain Node).
 //
 // Logs into the live ASUS router, reads the connected client list, and runs the
-// shared runDeviceSync against netwarden.sqlite. Plain Node (no 'server-only'):
+// shared runDeviceSync against darylweb.sqlite. Plain Node (no 'server-only'):
 // it builds its own RouterProvider-shaped object and imports only the
 // server-only-free pure modules (runDeviceSync.ts, parseAsusClientList.ts).
 //
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..');
-const DB_PATH = path.join(repoRoot, 'netwarden.sqlite');
+const DB_PATH = path.join(repoRoot, 'darylweb.sqlite');
 
 const host = process.env.ROUTER_HOST;
 const user = process.env.ROUTER_USER;

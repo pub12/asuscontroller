@@ -1,7 +1,7 @@
-# NetWarden — Build Spec: Foundations + Staged Spike
+# DarylWeb — Build Spec: Foundations + Staged Spike
 
 ## Purpose
-Stand up the NetWarden application substrate on the hazo_* workspace standard so all later phases
+Stand up the DarylWeb application substrate on the hazo_* workspace standard so all later phases
 have a place to live, and stage (without running) the live-hardware feasibility spike.
 
 ## Scope
@@ -52,10 +52,10 @@ Secrets → hazo_secure; audit → hazo_audit; images → hazo_files; volatile r
 job metadata → hazo_jobs. (No app_block_audit table — hazo_audit owns it.)
 
 ## Auth
-- Role strings: netwarden:{appId}:superadmin, netwarden:{appId}:user.
+- Role strings: darylweb:{appId}:superadmin, darylweb:{appId}:user.
 - Server resolution via hazo_api withRequestContext + hazo_auth server session helper.
 - First-superadmin: on login, if subject email === SUPERADMIN_EMAIL and no superadmin exists, grant
-  netwarden:{appId}:superadmin. Idempotent.
+  darylweb:{appId}:superadmin. Idempotent.
 - Unauthenticated → redirect to hazo_auth login.
 
 ## API surface (foundation only)

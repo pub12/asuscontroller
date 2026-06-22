@@ -65,13 +65,13 @@ async function applyTestSchema(adapter: Awaited<ReturnType<typeof createHazoConn
 }
 
 async function runTests() {
-  process.env.JWT_SECRET ??= 'netwarden-autotest-only-not-a-real-secret';
+  process.env.JWT_SECRET ??= 'darylweb-autotest-only-not-a-real-secret';
 
   const hazoSchema = getHazoAuthSchema();
 
   const tmpDb = path.join(
     os.tmpdir(),
-    `netwarden_group_block_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
+    `darylweb_group_block_test_${Date.now()}_${Math.floor(Math.random() * 1e9)}.sqlite`,
   );
 
   const adapter = createHazoConnect({
