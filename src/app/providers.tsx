@@ -1,10 +1,10 @@
 'use client';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/lib/theme';
 import { HazoContextProvider, HazoUiToaster } from 'hazo_ui';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+    <ThemeProvider>
       <HazoContextProvider>
         {children}
         <HazoUiToaster />

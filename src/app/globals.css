@@ -4,7 +4,7 @@
 @source "../../node_modules/hazo_auth/dist";
 @source "../../node_modules/hazo_api/dist";
 
-/* Switch dark: from media-query to class-based (for next-themes attribute="class") */
+/* Switch dark: from media-query to class-based (theme toggles the `.dark` class on <html>) */
 @custom-variant dark (&:is(.dark *));
 
 /*

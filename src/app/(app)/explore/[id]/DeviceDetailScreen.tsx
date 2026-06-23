@@ -84,9 +84,22 @@ function formatMinutes(mins: number): string {
   return `${h}h ${m}m`;
 }
 
+// Format deterministically with an explicit locale + timezone so the server
+// and client render identical text (a bare toLocaleString() uses each runtime's
+// default locale/tz, which differ and break hydration). Project standard: Melbourne.
+const TIMESTAMP_FMT = new Intl.DateTimeFormat('en-AU', {
+  timeZone: 'Australia/Melbourne',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
 function timeAgo(iso: string): string {
   try {
-    return new Date(iso).toLocaleString();
+    return TIMESTAMP_FMT.format(new Date(iso));
   } catch {
     return iso;
   }
