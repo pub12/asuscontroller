@@ -34,7 +34,26 @@ function hasSimpleAuthCookies(request: NextRequest): boolean {
   return hasUserId && hasUserEmail;
 }
 
+/**
+ * Test routes (e.g. /api/auth-test, /api/block-api-test) run real hazo_testing
+ * suites on the server. They are unauthenticated by design for dev convenience
+ * but must not be reachable in production. Similarly, the Swagger UI/spec
+ * (/api/v1/docs) exposes the full API surface without auth.
+ *
+ * This check runs at the middleware edge — a 404 here hides the routes entirely,
+ * even before the route handler code runs. The 12 test routes that already have
+ * an inline `NODE_ENV` guard keep it as defense-in-depth.
+ */
+const PROD_BLOCKED_RE = /^\/api\/(.*-test|v1\/docs)(\/.*)?$/;
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Block test routes and Swagger in production.
+  if (process.env.NODE_ENV === 'production' && PROD_BLOCKED_RE.test(pathname)) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const { valid } = await validate_session_cookie(request);
   if (!valid && !hasSimpleAuthCookies(request)) {
     const loginUrl = new URL('/login', request.url);
@@ -49,6 +68,9 @@ export async function middleware(request: NextRequest) {
  * Explicitly excludes /login, /hazo_auth/*, /autotest, /api/*, /_next/*, static assets.
  * `/explore/:path*` covers dynamic subroutes (device detail, group detail, group
  * create) — exact-path matchers alone would leave those unauthenticated.
+ *
+ * The `*-test` and `/api/v1/docs` entries ensure the PROD_BLOCKED_RE guard above
+ * fires for those paths even though /api/* is otherwise excluded from middleware.
  */
 export const config = {
   matcher: [
@@ -59,5 +81,9 @@ export const config = {
     '/admin',
     '/admin/:path*',
     '/settings',
+    // Ensure test routes and Swagger docs reach the middleware edge in all envs.
+    '/api/:path*-test',
+    '/api/v1/docs',
+    '/api/v1/docs/:path*',
   ],
 };

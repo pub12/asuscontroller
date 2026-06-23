@@ -46,6 +46,19 @@ if ((subcommand === 'dev' || subcommand === 'start') && !hasExplicitPort) {
   args.push('-p', process.env.PORT || DEFAULT_PORT);
 }
 
+// Inject a bind hostname when HOST is set and no explicit -H/--hostname was
+// passed. Defaults to Next's 0.0.0.0 (LAN-visible), which is correct for
+// household devices. To restrict to localhost (e.g. behind a reverse proxy),
+// set HOST=127.0.0.1 in the environment or ecosystem.config.js.
+const hasExplicitHost = args.some((a) => a === '-H' || a === '--hostname');
+if (
+  (subcommand === 'dev' || subcommand === 'start') &&
+  !hasExplicitHost &&
+  process.env.HOST
+) {
+  args.push('-H', process.env.HOST);
+}
+
 // Add the react-server condition for the runtimes that start the env worker.
 // Passed via NODE_OPTIONS so Next's forked server/worker processes inherit it.
 const env = { ...process.env };

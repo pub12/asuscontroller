@@ -48,6 +48,24 @@ export function isNotifyConfigured(): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// HTML escaping — required because parse_mode: 'HTML' interprets <, >, &, "
+// ---------------------------------------------------------------------------
+
+/**
+ * Escape the five characters Telegram's HTML mode treats specially.
+ * Apply this to any dynamic value (device name, user name, etc.) before
+ * interpolating it into the message body.
+ */
+export function htmlEscape(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+// ---------------------------------------------------------------------------
 // Default Telegram transport
 // ---------------------------------------------------------------------------
 

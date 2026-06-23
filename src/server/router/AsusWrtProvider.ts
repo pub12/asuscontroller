@@ -356,7 +356,20 @@ export class AsusWrtProvider implements RouterProvider {
    * @param mac     Colon-separated MAC (case-insensitive).
    * @param enabled true = grant internet (remove rule); false = block 24/7.
    */
+  /** Strict colon-separated MAC address pattern (e.g. AA:BB:CC:DD:EE:FF). */
+  private static readonly MAC_RE = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
+
   async setInternetAccess(mac: string, enabled: boolean): Promise<AccessResult> {
+    // Validate MAC format before it reaches the `>`-joined MULTIFILTER body.
+    // A malformed value containing `>` could corrupt the entire nvram list.
+    if (!AsusWrtProvider.MAC_RE.test(mac)) {
+      return {
+        success: false,
+        message: `setInternetAccess(): invalid MAC address format: "${mac}". ` +
+          'Expected XX:XX:XX:XX:XX:XX (hex pairs separated by colons).',
+      };
+    }
+
     const { host } = await getRouterCredentials();
     if (!host) {
       throw new Error(

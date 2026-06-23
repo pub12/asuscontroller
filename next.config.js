@@ -24,12 +24,15 @@ nextConfig.headers = async () => [
   {
     // Apply conservative security headers to all routes.
     // No strict CSP — would break the Swagger UI.
+    // X-Robots-Tag: noindex reinforces robots.ts and the <meta> tag in layout —
+    // covers crawlers that hit a URL directly without first reading robots.txt.
     source: '/(.*)',
     headers: [
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
       { key: 'X-DNS-Prefetch-Control', value: 'off' },
+      { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
     ],
   },
 ];
