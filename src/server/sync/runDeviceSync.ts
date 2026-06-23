@@ -95,11 +95,11 @@ function materialize(rules: PolicyRule[], fromMs: number, days: number, tz: stri
   return out;
 }
 
-export function policyState(rules: PolicyRule[], nowMs: number, tz: string = POLICY_TZ): 'block' | 'unblock' | null {
-  if (rules.length === 0) return null;
+export function policyState(rules: PolicyRule[], nowMs: number, tz: string = POLICY_TZ, defaultAction: 'block' | 'unblock' = 'unblock'): 'block' | 'unblock' {
+  if (rules.length === 0) return defaultAction;
   // Look back up to 8 days for the most recent transition at-or-before now.
   const pts = materialize(rules, nowMs - 8 * 86_400_000, 9, tz);
-  let last: 'block' | 'unblock' | null = null;
+  let last: 'block' | 'unblock' = defaultAction;
   for (const p of pts) { if (p.ms <= nowMs) last = p.action; else break; }
   return last;
 }
@@ -235,8 +235,8 @@ export async function runDeviceSync(
     // Build effective-policy map: deviceId -> { rules, tz }. Device-level policy
     // wins; otherwise the device's primary_group_id group policy applies.
     const policyRows = (await adapter.rawQuery(
-      `SELECT id, target_type, target_id, tz FROM app_schedule_policies WHERE enabled = 1`,
-    )) as { id: string; target_type: string; target_id: string; tz: string }[];
+      `SELECT id, target_type, target_id, tz, default_action FROM app_schedule_policies WHERE enabled = 1`,
+    )) as { id: string; target_type: string; target_id: string; tz: string; default_action: string }[];
     const ruleRows = (await adapter.rawQuery(
       `SELECT policy_id, weekday, time_min, action FROM app_schedule_rules`,
     )) as { policy_id: string; weekday: number; time_min: number; action: 'block' | 'unblock' }[];
@@ -246,10 +246,10 @@ export async function runDeviceSync(
       arr.push({ weekday: Number(r.weekday), time_min: Number(r.time_min), action: r.action });
       rulesByPolicy.set(r.policy_id, arr);
     }
-    const devicePolicy = new Map<string, { rules: PolicyRule[]; tz: string }>();
-    const groupPolicy = new Map<string, { rules: PolicyRule[]; tz: string }>();
+    const devicePolicy = new Map<string, { rules: PolicyRule[]; tz: string; defaultAction: 'block' | 'unblock' }>();
+    const groupPolicy = new Map<string, { rules: PolicyRule[]; tz: string; defaultAction: 'block' | 'unblock' }>();
     for (const p of policyRows) {
-      const entry = { rules: rulesByPolicy.get(p.id) ?? [], tz: p.tz || 'Australia/Melbourne' };
+      const entry = { rules: rulesByPolicy.get(p.id) ?? [], tz: p.tz || 'Australia/Melbourne', defaultAction: (p.default_action === 'block' ? 'block' : 'unblock') as 'block' | 'unblock' };
       if (p.target_type === 'device') devicePolicy.set(p.target_id, entry);
       else groupPolicy.set(p.target_id, entry);
     }
@@ -264,15 +264,22 @@ export async function runDeviceSync(
 
     for (const d of allDevices) {
       const eff = devicePolicy.get(d.id) ?? (d.gid ? groupPolicy.get(d.gid) : undefined);
-      if (!eff || eff.rules.length === 0) continue;
+      if (!eff) continue;
       policyDeviceIds.add(d.id);
       if (d.status !== 'online') continue; // offline: corrected when it returns
 
-      // Honor an active manual-override hold.
-      if (d.override_until && nowMs < Date.parse(d.override_until)) continue;
+      // Honor an active manual-override hold. When the policy has no upcoming
+      // transition (nextTransition is null — i.e. no rules), there's no natural
+      // expiry, so keep the override alive by pushing it to a far-future sentinel.
+      if (d.override_until && nowMs < Date.parse(d.override_until)) {
+        if (nextTransition(eff.rules, nowMs, eff.tz) === null) {
+          const farFuture = new Date(nowMs + 365 * 24 * 60 * 60 * 1000).toISOString();
+          await adapter.rawQuery(`UPDATE app_block_state SET override_until = ? WHERE device_id = ?`, { params: [farFuture, d.id] });
+        }
+        continue;
+      }
 
-      const desired = policyState(eff.rules, nowMs, eff.tz); // 'block' | 'unblock' | null
-      if (!desired) continue;
+      const desired = policyState(eff.rules, nowMs, eff.tz, eff.defaultAction);
       const wantBlocked = desired === 'block';
       const isBlocked = Number(d.is_blocked) === 1;
       const overrideExpired = d.override_until != null && nowMs >= Date.parse(d.override_until);

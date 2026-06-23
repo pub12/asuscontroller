@@ -1,5 +1,17 @@
 # Scheduled block/unblock with manual override — Implementation Plan
 
+## Implementation Progress
+
+- [x] **Task 1:** Migration — policy tables + override column ✅ 2026-06-22 (d04a446)
+- [x] **Task 2:** Pure schedule engine in runDeviceSync.ts ✅ 2026-06-22 (375fc35)
+- [x] **Task 3:** policyService — CRUD + apply-now + override clearing ✅ 2026-06-22 (2be4e5b)
+- [x] **Task 4:** Override stamping in blockService ✅ 2026-06-22 (56f4b93)
+- [x] **Task 5:** Policy API routes + apply-on-create ✅ 2026-06-22 (18d3546)
+- [x] **Task 6:** Policy-aware reconcile in runDeviceSync (worker engine) ✅ 2026-06-22 (dcc2a92)
+- [x] **Task 7:** Timezone relabel to Melbourne ✅ 2026-06-22 (69b62c7)
+- [x] **Task 8:** Schedule editor UI + integration ✅ 2026-06-22 (afbb3f1)
+- [x] **Task 9:** End-to-end smoke + docs ✅ 2026-06-22 (a1eb021)
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let a user define recurring block/unblock schedules (Melbourne time) for a device or group, with manual block/unblock taking precedence until the next scheduled transition.

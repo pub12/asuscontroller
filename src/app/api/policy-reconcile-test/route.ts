@@ -65,6 +65,30 @@ export async function GET() {
     checks.override_cleared = ov == null;
     checks.next_window_unblocked = (await blocked()) === false;
 
+    // (E) All-block-no-exceptions: default_action='block', no rules, online device -> blocked.
+    const mac2 = clients[1].mac;
+    const d2 = (await adapter.rawQuery(`SELECT id FROM app_devices WHERE mac = ?`, { params: [mac2] }))[0].id;
+    const pid2 = 'pol_all_block';
+    await adapter.rawQuery(
+      `INSERT INTO app_schedule_policies (id, target_type, target_id, enabled, tz, default_action, created_at) VALUES (?, 'device', ?, 1, 'Australia/Melbourne', 'block', ?)`,
+      { params: [pid2, d2, new Date().toISOString()] });
+    await runDeviceSync(adapter, provider, new Date(tBase).toISOString(), { intervalSec: 60 });
+    checks.all_block_no_exceptions = Number((await adapter.rawQuery(
+      `SELECT COALESCE(is_blocked,0) b FROM app_block_state WHERE device_id = ?`, { params: [d2] }))[0]?.b ?? 0) === 1;
+
+    // (F) Override hold on an all-default policy (no rules): manual unblock override must persist
+    // because nextTransition is null (no natural expiry), so override_until is pushed to far-future.
+    const overrideUntil = new Date(tBase + 5 * 60 * 1000).toISOString(); // +5 min from now
+    await adapter.rawQuery(`UPDATE app_block_state SET is_blocked = 0, override_until = ? WHERE device_id = ?`,
+      { params: [overrideUntil, d2] });
+    await provider.setInternetAccess(mac2, true);
+    const t1min = tBase + 60 * 1000; // +1 min (still within override window)
+    await runDeviceSync(adapter, provider, new Date(t1min).toISOString(), { intervalSec: 60 });
+    const ov2 = (await adapter.rawQuery(
+      `SELECT override_until FROM app_block_state WHERE device_id = ?`, { params: [d2] }))[0]?.override_until;
+    // override_until should be pushed ~1 year out (far-future sentinel)
+    checks.override_hold_no_rules = ov2 != null && Date.parse(ov2) > t1min + 364 * 24 * 60 * 60 * 1000;
+
     const all_ok = Object.values(checks).every(Boolean);
     return Response.json({ all_ok, checks });
   } catch (e) {

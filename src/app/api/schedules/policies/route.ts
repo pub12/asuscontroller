@@ -18,6 +18,7 @@ const Body = z.object({
   enabled: z.boolean().default(true),
   label: z.string().optional(),
   rules: z.array(RuleSchema).max(200),
+  defaultAction: z.enum(['block', 'unblock']).default('unblock'),
 });
 
 export const GET = withRequestContext(async (req: Request) => {
@@ -31,7 +32,7 @@ export const GET = withRequestContext(async (req: Request) => {
   const adapter = getDb();
   const policy = await getPolicy(adapter, targetType, targetId);
   const now = Date.now();
-  const currentState = policy && policy.enabled ? policyState(policy.rules, now, policy.tz) : null;
+  const currentState = policy && policy.enabled ? policyState(policy.rules, now, policy.tz, policy.default_action) : null;
   const nt = policy && policy.enabled ? nextTransition(policy.rules, now, policy.tz) : null;
   return ok({ policy, currentState, nextTransitionISO: nt == null ? null : new Date(nt).toISOString() });
 });
@@ -44,14 +45,14 @@ export const POST = withRequestContext(async (req: Request) => {
   try { json = await req.json(); } catch { return fail('VALIDATION_FAILED', 'Invalid JSON body'); }
   const parsed = Body.safeParse(json);
   if (!parsed.success) return fail('VALIDATION_FAILED', parsed.error.issues.map((i) => i.message).join('; '));
-  const { targetType, targetId, enabled, label, rules } = parsed.data;
+  const { targetType, targetId, enabled, label, rules, defaultAction } = parsed.data;
 
   const adapter = getDb();
   const target = targetType === 'device' ? { deviceId: targetId } : { scopeType: 'group' as const, scopeId: targetId };
   const decision = await authorizeCapability(adapter, { subject: auth.subject, isSuperadmin: auth.isSuperadmin }, 'schedule.create', target);
   if (!decision.allowed) return fail('FORBIDDEN', decision.reason);
 
-  const policy = await upsertPolicy(adapter, { targetType, targetId, enabled, label: label ?? null, rules, actor: { userId: auth.subject } });
+  const policy = await upsertPolicy(adapter, { targetType, targetId, enabled, label: label ?? null, rules, defaultAction, actor: { userId: auth.subject } });
   // Apply the policy's current desired state immediately (best-effort).
   try {
     const provider = await getRouterProvider();

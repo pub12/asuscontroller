@@ -20,3 +20,6 @@ logs/
 
 # DB backups
 *.sqlite.bak*
+
+# Superpowers plugin working dir (brainstorm/session scratch)
+.superpowers/

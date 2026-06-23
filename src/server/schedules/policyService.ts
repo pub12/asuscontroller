@@ -19,6 +19,7 @@ export interface PolicyWithRules {
   enabled: boolean;
   tz: string;
   label: string | null;
+  default_action: 'block' | 'unblock';
   rules: PolicyRule[];
 }
 
@@ -39,6 +40,7 @@ async function loadPolicyRow(adapter: HazoConnectAdapter, where: string, params:
   return {
     id: p.id, target_type: p.target_type, target_id: p.target_id,
     enabled: Number(p.enabled) === 1, tz: p.tz ?? POLICY_TZ, label: p.label ?? null,
+    default_action: (p.default_action === 'block' ? 'block' : 'unblock') as 'block' | 'unblock',
     rules: await loadRules(adapter, p.id),
   };
 }
@@ -59,21 +61,23 @@ export async function getEnabledPolicyForDevice(adapter: HazoConnectAdapter, dev
 export async function upsertPolicy(adapter: HazoConnectAdapter, opts: {
   targetType: 'device' | 'group'; targetId: string; enabled: boolean;
   label?: string | null; rules: PolicyRule[]; actor: { userId?: string | null };
+  defaultAction?: 'block' | 'unblock';
 }): Promise<PolicyWithRules> {
   const now = new Date().toISOString();
+  const defaultAction = opts.defaultAction ?? 'unblock';
   const existing = await getPolicy(adapter, opts.targetType, opts.targetId);
   const id = existing?.id ?? 'pol_' + crypto.randomUUID();
   if (existing) {
     await raw(adapter).rawQuery(
-      `UPDATE app_schedule_policies SET enabled = ?, label = ?, tz = ?, updated_at = ? WHERE id = ?`,
-      { params: [opts.enabled ? 1 : 0, opts.label ?? null, POLICY_TZ, now, id] },
+      `UPDATE app_schedule_policies SET enabled = ?, label = ?, tz = ?, default_action = ?, updated_at = ? WHERE id = ?`,
+      { params: [opts.enabled ? 1 : 0, opts.label ?? null, POLICY_TZ, defaultAction, now, id] },
     );
     await raw(adapter).rawQuery(`DELETE FROM app_schedule_rules WHERE policy_id = ?`, { params: [id] });
   } else {
     await raw(adapter).rawQuery(
-      `INSERT INTO app_schedule_policies (id, target_type, target_id, enabled, tz, label, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      { params: [id, opts.targetType, opts.targetId, opts.enabled ? 1 : 0, POLICY_TZ, opts.label ?? null, opts.actor.userId ?? null, now, now] },
+      `INSERT INTO app_schedule_policies (id, target_type, target_id, enabled, tz, label, default_action, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      { params: [id, opts.targetType, opts.targetId, opts.enabled ? 1 : 0, POLICY_TZ, opts.label ?? null, defaultAction, opts.actor.userId ?? null, now, now] },
     );
   }
   for (const r of opts.rules) {
@@ -113,9 +117,8 @@ export async function applyPolicyNow(
   targetType: 'device' | 'group', targetId: string, actor: { userId?: string | null },
 ): Promise<void> {
   const policy = await getPolicy(adapter, targetType, targetId);
-  if (!policy || !policy.enabled || policy.rules.length === 0) return;
-  const desired = policyState(policy.rules, Date.now(), policy.tz);
-  if (!desired) return;
+  if (!policy || !policy.enabled) return;
+  const desired = policyState(policy.rules, Date.now(), policy.tz, policy.default_action);
   const gate = { authorized: true, actorLabel: 'schedule', actorUserId: actor.userId ?? null };
   const action = desired === 'block' ? 'block' : 'unblock';
   if (targetType === 'device') await runBlockAction(adapter, provider, gate, targetId, action);

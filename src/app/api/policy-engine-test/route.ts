@@ -29,9 +29,34 @@ export async function GET() {
   checks.wraparound_state = policyState(allowWin, wed) === 'block';
   checks.wraparound_next = nextTransition(allowWin, wed) === Date.parse('2026-06-29T06:00:00.000Z'); // next Mon 16:00 AEST
 
-  // Empty rules -> null.
-  checks.empty_state = policyState([], monWinter17) === null;
+  // Empty rules -> defaultAction (default 'unblock'); next is still null.
+  checks.empty_state = policyState([], monWinter17) === 'unblock';
   checks.empty_next = nextTransition([], monWinter17) === null;
+
+  // Default-action cases.
+  checks.empty_default_block = policyState([], monWinter17, 'Australia/Melbourne', 'block') === 'block';
+
+  // default='unblock', one block window 14:00–16:00 Mon: inside → blocked, outside → unblocked.
+  const blockWin: PolicyRule[] = [
+    { weekday: 0, time_min: 840, action: 'block' },
+    { weekday: 0, time_min: 960, action: 'unblock' },
+  ];
+  const monWinter15 = Date.parse('2026-06-22T05:00:00.000Z'); // 15:00 AEST
+  checks.default_unblock_inside_block_win = policyState(blockWin, monWinter15, 'Australia/Melbourne', 'unblock') === 'block';
+  checks.default_unblock_outside_block_win = policyState(blockWin, monWinter17, 'Australia/Melbourne', 'unblock') === 'unblock';
+
+  // Overnight window: block 22:00 Mon – 02:00 Tue (default='unblock').
+  // Enter: Mon weekday 0 @1320 → 'block'; Exit: Tue weekday 1 @120 → 'unblock'.
+  const overnightRules: PolicyRule[] = [
+    { weekday: 0, time_min: 1320, action: 'block' },
+    { weekday: 1, time_min: 120, action: 'unblock' },
+  ];
+  const monWinter23 = Date.parse('2026-06-22T13:00:00.000Z'); // 23:00 AEST Mon
+  const tue01 = Date.parse('2026-06-22T15:00:00.000Z');       // 01:00 AEST Tue
+  const tue03 = Date.parse('2026-06-22T17:00:00.000Z');       // 03:00 AEST Tue
+  checks.overnight_inside = policyState(overnightRules, monWinter23, 'Australia/Melbourne', 'unblock') === 'block';
+  checks.overnight_still_inside = policyState(overnightRules, tue01, 'Australia/Melbourne', 'unblock') === 'block';
+  checks.overnight_after = policyState(overnightRules, tue03, 'Australia/Melbourne', 'unblock') === 'unblock';
 
   // DST: AEDT (UTC+11) summer. Mon 2026-01-05 17:00 Melbourne = 06:00Z.
   const monSummer17 = Date.parse('2026-01-05T06:00:00.000Z');
